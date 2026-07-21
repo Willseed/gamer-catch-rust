@@ -163,33 +163,34 @@ jobs:
       - name: Collect release files
         run: |
           mkdir release-ready
-          for filename in \
-            GamerCatch-macOS-arm64.zip \
-            GamerCatch-Windows-x64.zip \
-            GamerCatch_零基礎使用手冊_macOS.pdf \
-            GamerCatch_零基礎使用手冊_Windows.pdf
+          while IFS='|' read -r source_filename release_filename
           do
-            match_count="$(find release-assets -type f -name "$filename" -print | awk 'END { print NR }')"
+            match_count="$(find release-assets -type f -name "$source_filename" -print | awk 'END { print NR }')"
             if test "$match_count" -ne 1; then
-              echo "Expected exactly one $filename, found $match_count." >&2
+              echo "Expected exactly one $source_filename, found $match_count." >&2
               exit 1
             fi
-            source_path="$(find release-assets -type f -name "$filename" -print -quit)"
-            cp "$source_path" "release-ready/$filename"
-          done
+            source_path="$(find release-assets -type f -name "$source_filename" -print -quit)"
+            cp "$source_path" "release-ready/$release_filename"
+          done <<'FILES'
+          GamerCatch-macOS-arm64.zip|GamerCatch-macOS-arm64.zip
+          GamerCatch-Windows-x64.zip|GamerCatch-Windows-x64.zip
+          GamerCatch_零基礎使用手冊_macOS.pdf|GamerCatch-Beginner-Manual-macOS-zh-TW.pdf
+          GamerCatch_零基礎使用手冊_Windows.pdf|GamerCatch-Beginner-Manual-Windows-zh-TW.pdf
+          FILES
 
       - name: Validate release assets
         run: |
           python3 scripts/validate-package.py --platform macos release-ready/GamerCatch-macOS-arm64.zip
           python3 scripts/validate-package.py --platform windows release-ready/GamerCatch-Windows-x64.zip
-          test -s release-ready/GamerCatch_零基礎使用手冊_macOS.pdf
-          test -s release-ready/GamerCatch_零基礎使用手冊_Windows.pdf
+          test -s release-ready/GamerCatch-Beginner-Manual-macOS-zh-TW.pdf
+          test -s release-ready/GamerCatch-Beginner-Manual-Windows-zh-TW.pdf
           cd release-ready
           sha256sum \
             GamerCatch-macOS-arm64.zip \
             GamerCatch-Windows-x64.zip \
-            GamerCatch_零基礎使用手冊_macOS.pdf \
-            GamerCatch_零基礎使用手冊_Windows.pdf \
+            GamerCatch-Beginner-Manual-macOS-zh-TW.pdf \
+            GamerCatch-Beginner-Manual-Windows-zh-TW.pdf \
             > SHA256SUMS.txt
 
       - name: Create GitHub prerelease

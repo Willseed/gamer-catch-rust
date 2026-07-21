@@ -6,7 +6,7 @@ CONFIG_PATH="$SCRIPT_DIR/config.toml"
 CREDENTIALS_DIR="$SCRIPT_DIR/credentials"
 BINARY_PATH="$SCRIPT_DIR/GamerCatch"
 DRIVER_PATH="$SCRIPT_DIR/playwright-driver"
-GUIDE_URL="https://gamer.catch.pylot.dev/guide#quick-start"
+GUIDE_URL="https://gamer-catch.pylot.dev/guide#quick-start"
 
 cd "$SCRIPT_DIR" || exit 1
 mkdir -p "$CREDENTIALS_DIR"

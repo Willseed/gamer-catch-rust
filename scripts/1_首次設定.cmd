@@ -7,7 +7,7 @@ set "CONFIG=%BASE%config.toml"
 set "CREDENTIALS=%BASE%credentials"
 set "APP=%BASE%GamerCatch.exe"
 set "DRIVER=%BASE%playwright-driver"
-set "GUIDE_URL=https://gamer.catch.pylot.dev/guide#quick-start"
+set "GUIDE_URL=https://gamer-catch.pylot.dev/guide#quick-start"
 
 pushd "%BASE%" >nul
 if not exist "%CREDENTIALS%" mkdir "%CREDENTIALS%"

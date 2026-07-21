@@ -1,6 +1,6 @@
 # GamerCatch Web
 
-`gamer.catch.pylot.dev` 的 Angular 22 靜態網站，包含：
+`gamer-catch.pylot.dev` 的 Angular 22 靜態網站，包含：
 
 - 多遊戲、多 Google Sheets、多人帳號與 Gmail 收件人的 `config.toml` 產生器
 - macOS／Windows 下載入口

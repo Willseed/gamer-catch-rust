@@ -22,5 +22,7 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand')?.textContent).toContain('GamerCatch');
     expect(compiled.querySelector('nav[aria-label="主要導覽"]')).toBeTruthy();
+    expect(compiled.textContent).toContain('gamer-catch.pylot.dev');
+    expect(compiled.textContent).not.toContain(['gamer', 'catch.pylot.dev'].join('.'));
   });
 });

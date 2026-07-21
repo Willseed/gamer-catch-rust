@@ -1,6 +1,6 @@
 巴哈多遊戲排行抓取工具 — 開始使用
 
-完整線上教學：https://gamer.catch.pylot.dev/guide#quick-start
+完整線上教學：https://gamer-catch.pylot.dev/guide#quick-start
 
 網頁教學會隨工具更新，發行包不再內附 PDF。
 

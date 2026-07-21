@@ -1,5 +1,5 @@
 {
-  // Intended Cloudflare Pages custom domain: gamer.catch.pylot.dev
+  // Intended Cloudflare Pages custom domain: gamer-catch.pylot.dev
   // Attach it to this Pages project after the DNS zone and project exist.
   "name": "gamer-catch",
   "pages_build_output_dir": "./dist/cloudflare/browser",

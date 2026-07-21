@@ -16,7 +16,7 @@ from pathlib import PurePosixPath
 CONFIG_FILENAME = "config.toml"
 CREDENTIALS_DIRECTORY = "credentials"
 USAGE_FILENAME = "使用說明.txt"
-WEB_GUIDE_URL = "https://gamer.catch.pylot.dev/guide#quick-start"
+WEB_GUIDE_URL = "https://gamer-catch.pylot.dev/guide#quick-start"
 WINDOWS_STARTER_ENTRY = "1_首次設定.cmd"
 WINDOWS_RUNNER_ENTRY = "2_開始抓取.cmd"
 WINDOWS_GMAIL_AUTHORIZER_ENTRY = "Gmail_首次授權.cmd"

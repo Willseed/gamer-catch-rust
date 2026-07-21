@@ -4,7 +4,7 @@
 
 - 新增 Angular 22／TypeScript 6 網站與零程式設定產生器，支援多遊戲、多 Google Sheets、多人帳號與多人 Gmail 收件人。
 - 新增高對比 PlayStation-inspired 首頁、下載頁，以及可用 `#fragment` 直接分享的完整繁中線上教學。
-- 移除 PDF 手冊、產生器與發行資產，改以 `https://gamer.catch.pylot.dev` 作為唯一教學來源。
+- 移除 PDF 手冊、產生器與發行資產，改以 `https://gamer-catch.pylot.dev` 作為唯一教學來源。
 - 新增 Node.js 24 網站 CI、Cloudflare Pages deployment workflow、安全標頭、SPA fallback 與 custom-domain 檢查。
 - 更新 macOS／Windows 發行腳本、ZIP 驗證、README 與離線說明，使首次設定直接開啟線上教學。
 

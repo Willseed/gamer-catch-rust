@@ -62,10 +62,10 @@ jobs:
 
           guide_response="$(mktemp)"
           trap 'rm -f "$guide_response"' EXIT
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --proto '=https' \
             --retry 30 --retry-delay 10 --retry-all-errors \
             --output "$guide_response" \
-            "https://gamer.catch.pylot.dev/guide#quick-start"
+            "https://gamer-catch.pylot.dev/guide#quick-start"
           if ! grep --fixed-strings 'data-gamercatch-site="angular-guide"' "$guide_response" > /dev/null; then
             echo "The online GamerCatch guide is unavailable or is not the expected Angular site." >&2
             exit 1

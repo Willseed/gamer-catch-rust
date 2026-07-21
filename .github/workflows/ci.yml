@@ -313,7 +313,7 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install exact dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Test configuration generator and pages
         run: npm run test:ci
@@ -343,7 +343,12 @@ jobs:
             exit 1
           }
           test ! -e scripts/generate-manual.py
-          grep -F 'https://gamer.catch.pylot.dev/guide#quick-start' 使用說明.txt
+          grep -F 'https://gamer-catch.pylot.dev/guide#quick-start' 使用說明.txt
+          retired_domain='gamer'\.'catch.pylot.dev'
+          if git grep -F "$retired_domain"; then
+            echo "The retired dotted subdomain must not return." >&2
+            exit 1
+          fi
 
       - name: Reject committed credentials
         run: |

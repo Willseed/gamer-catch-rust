@@ -1,6 +1,6 @@
 # Cloudflare Pages 一次性設定
 
-正式網域：`gamer.catch.pylot.dev`
+正式網域：`gamer-catch.pylot.dev`
 
 Pages project：`gamer-catch`
 
@@ -8,7 +8,7 @@ GitHub repository：`Willseed/gamer-catch-rust`
 
 ## 1. 先確認既有 DNS
 
-`pylot.dev` 使用 Cloudflare nameserver。設定 custom domain 前，先在 Cloudflare DNS 搜尋完整名稱 `gamer.catch.pylot.dev`。若已有 A、AAAA 或 CNAME，不要直接新增第二筆同名記錄；先確認它原本的用途與 Pages project，再移除或改由 Pages custom domain 管理。
+`pylot.dev` 使用 Cloudflare nameserver。設定 custom domain 前，先在 Cloudflare DNS 搜尋完整名稱 `gamer-catch.pylot.dev`。若已有 A、AAAA 或 CNAME，不要直接新增第二筆同名記錄；先確認它原本的用途與 Pages project，再移除或改由 Pages custom domain 管理。
 
 網域的 DNS、Universal SSL 與 custom domain 都由 Cloudflare 控制。GitHub 只執行部署 workflow，不能直接替 Cloudflare zone 修改 DNS。
 
@@ -42,20 +42,20 @@ Repository secrets：
 Repository variable：
 
 - `CLOUDFLARE_PAGES_PROJECT` = `gamer-catch`
-- `SITE_DOMAIN` = `gamer.catch.pylot.dev`
+- `SITE_DOMAIN` = `gamer-catch.pylot.dev`
 - `CLOUDFLARE_DEPLOY_ENABLED` = `true`
 
 在兩個 secrets 都存在之前，variable 必須維持 `false`。workflow 不會在 pull request 使用 Cloudflare secret，也不會部署非 `main` branch。
 
 ## 5. 綁定 custom domain
 
-workflow 部署後會查詢 `gamer.catch.pylot.dev`；尚未綁定才呼叫 Pages custom-domain API。Cloudflare 會建立正確 DNS target 並簽發憑證。若步驟 1 的同名舊記錄尚未清除，流程會安全失敗，不會自行刪除或覆寫記錄。
+workflow 部署後會查詢 `gamer-catch.pylot.dev`；尚未綁定才呼叫 Pages custom-domain API。Cloudflare 會建立正確 DNS target 並簽發憑證。若步驟 1 的同名舊記錄尚未清除，流程會安全失敗，不會自行刪除或覆寫記錄。
 
 等 Cloudflare Pages 的 custom domain 狀態顯示 Active、Universal SSL 已簽發後再測試：
 
 ```bash
-curl -fsSIL https://gamer.catch.pylot.dev/
-curl -fsSIL https://gamer.catch.pylot.dev/guide#quick-start
+curl -fsSI --proto '=https' https://gamer-catch.pylot.dev/
+curl -fsSI --proto '=https' https://gamer-catch.pylot.dev/guide#quick-start
 ```
 
 HTTP 要轉 HTTPS；首頁及 `/guide` 應回 200。URL fragment 不會送到伺服器，所以第二個命令只驗證 `/guide`，實際章節跳轉需在瀏覽器確認。

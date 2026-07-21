@@ -284,6 +284,15 @@ jobs:
             Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue
           }
 
+      - name: Build and validate Windows release package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          ALLOW_UNSIGNED_WINDOWS: "1"
+        run: |
+          .\scripts\package-windows.ps1
+          python scripts\validate-package.py --platform windows dist\GamerCatch-Windows-x64.zip
+
   docs-and-scripts:
     name: PDF and scripts
     runs-on: ubuntu-latest

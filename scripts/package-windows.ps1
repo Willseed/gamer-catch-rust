@@ -4,7 +4,26 @@ $ProjectDir = Split-Path -Parent $PSScriptRoot
 $DriverCache = Join-Path $ProjectDir "target\playwright-driver-cache"
 $CargoHomeDir = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $env:USERPROFILE ".cargo" }
 $RustFlagSeparator = [char]0x1f
-$PackageRustFlags = "--remap-path-prefix=$ProjectDir=/workspace${RustFlagSeparator}--remap-path-prefix=$CargoHomeDir=/cargo"
+$ProjectDirForward = $ProjectDir.Replace('\', '/')
+$CargoHomeDirForward = $CargoHomeDir.Replace('\', '/')
+$RemapFlags = @(
+    "--remap-path-prefix=$ProjectDir=/workspace",
+    "--remap-path-prefix=\\?\$ProjectDir=/workspace",
+    "--remap-path-prefix=$ProjectDirForward=/workspace",
+    "--remap-path-prefix=$CargoHomeDir=/cargo",
+    "--remap-path-prefix=\\?\$CargoHomeDir=/cargo",
+    "--remap-path-prefix=$CargoHomeDirForward=/cargo"
+)
+if ($env:GITHUB_WORKSPACE) {
+    $CiWorkspaceRoot = Split-Path -Parent (Split-Path -Parent $env:GITHUB_WORKSPACE)
+    $CiWorkspaceRootForward = $CiWorkspaceRoot.Replace('\', '/')
+    $RemapFlags += @(
+        "--remap-path-prefix=$CiWorkspaceRoot=/ci",
+        "--remap-path-prefix=\\?\$CiWorkspaceRoot=/ci",
+        "--remap-path-prefix=$CiWorkspaceRootForward=/ci"
+    )
+}
+$PackageRustFlags = $RemapFlags -join $RustFlagSeparator
 
 $RustVersion = & rustc -vV
 if ($LASTEXITCODE -ne 0) {
@@ -125,8 +144,11 @@ if ($BinaryText.Contains($DriverCache, [System.StringComparison]::OrdinalIgnoreC
     throw "The release executable still contains the local Playwright driver cache path."
 }
 
-if ($BinaryText -match '(?i)(/Users/[^/]+/|/home/runner/work/|[A-Z]:\\Users\\[^\\]+\\|[A-Z]:\\a\\)') {
-    throw "The release executable still contains a local user or CI workspace absolute path."
+$LocalPathPattern = '(?i)(?:/Users/[^/\x00]+/|/home/runner/work/|[A-Z]:\\Users\\[^\\\x00]+\\|[A-Z]:\\a\\)[^\x00-\x1f]{0,240}'
+$LocalPathMatch = [regex]::Match($BinaryText, $LocalPathPattern)
+if ($LocalPathMatch.Success) {
+    $LocalPathDetail = $LocalPathMatch.Value -replace '[^\u0020-\u007e]', '?'
+    throw "The release executable still contains a local user or CI workspace absolute path: $LocalPathDetail"
 }
 
 New-Item -ItemType Directory -Path $OutputDir | Out-Null

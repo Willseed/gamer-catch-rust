@@ -91,25 +91,25 @@ export function escapeTomlString(value: string): string {
   for (const character of value) {
     switch (character) {
       case '\b':
-        result += '\\b';
+        result += String.raw`\b`;
         break;
       case '\t':
-        result += '\\t';
+        result += String.raw`\t`;
         break;
       case '\n':
-        result += '\\n';
+        result += String.raw`\n`;
         break;
       case '\f':
-        result += '\\f';
+        result += String.raw`\f`;
         break;
       case '\r':
-        result += '\\r';
+        result += String.raw`\r`;
         break;
       case '"':
-        result += '\\"';
+        result += String.raw`\"`;
         break;
       case '\\':
-        result += '\\\\';
+        result += String.raw`\\`;
         break;
       default: {
         const codePoint = character.codePointAt(0) ?? 0;
@@ -341,10 +341,7 @@ function addDestinationCollisionIssues(issues: ConfigIssue[], games: GameSetting
   });
 }
 
-export function validateConfig(config: GamerCatchConfig): ConfigIssue[] {
-  const issues: ConfigIssue[] = [];
-  const { bahamut, gmail, games } = config;
-
+function addBahamutIssues(issues: ConfigIssue[], bahamut: BahamutSettings): void {
   if (!Number.isInteger(bahamut.category) || bahamut.category <= 0) {
     issues.push({ path: 'bahamut.category', message: '巴哈分類編號必須是大於 0 的整數。' });
   }
@@ -375,6 +372,13 @@ export function validateConfig(config: GamerCatchConfig): ConfigIssue[] {
   ) {
     issues.push({ path: 'bahamut.pageDelayMs', message: '翻頁等待必須介於 0 到 60,000 毫秒。' });
   }
+}
+
+export function validateConfig(config: GamerCatchConfig): ConfigIssue[] {
+  const issues: ConfigIssue[] = [];
+  const { bahamut, gmail, games } = config;
+
+  addBahamutIssues(issues, bahamut);
   if (games.length === 0 || games.length > MAX_GAMES) {
     issues.push({ path: 'games', message: `遊戲數量必須介於 1 到 ${MAX_GAMES} 個。` });
   }

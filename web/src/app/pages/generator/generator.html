@@ -287,9 +287,9 @@
           </ul>
         </div>
       } @else {
-        <div class="ready-box" role="status">
+        <output class="ready-box">
           <strong>設定格式已通過檢查。</strong> 可以下載 config.toml。
-        </div>
+        </output>
       }
 
       <div class="download-actions">
@@ -315,7 +315,7 @@
 
       <details class="preview-details">
         <summary>檢視產生的設定內容</summary>
-        <pre tabindex="0"><code>{{ preview() }}</code></pre>
+        <pre><code>{{ preview() }}</code></pre>
       </details>
     </section>
   </form>

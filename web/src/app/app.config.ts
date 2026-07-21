@@ -8,8 +8,8 @@ import {
 import { routes } from './app.routes';
 
 export const routerScrollingOptions: InMemoryScrollingOptions = {
-  anchorScrolling: 'enabled',
-  scrollPositionRestoration: 'enabled',
+  anchorScrolling: 'disabled',
+  scrollPositionRestoration: 'disabled',
 };
 
 export const appConfig: ApplicationConfig = {

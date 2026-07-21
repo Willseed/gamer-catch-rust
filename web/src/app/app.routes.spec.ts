@@ -12,12 +12,11 @@ describe('guide fragment navigation', () => {
     });
   });
 
-  it('scrolls to an alias on a direct guide URL', async () => {
+  it('resolves an alias on a direct guide URL', async () => {
     const harness = await RouterTestingHarness.create('/guide#quick-start');
     const router = TestBed.inject(Router);
 
     expect(router.url).toBe('/guide#quick-start');
-    expect(routerScrollingOptions.anchorScrolling).toBe('enabled');
     expect(harness.routeNativeElement?.querySelector('#quick-start')).not.toBeNull();
   });
 
@@ -35,7 +34,7 @@ describe('guide fragment navigation', () => {
     expect(harness.routeNativeElement?.querySelector('#change-game')).not.toBeNull();
   });
 
-  it('scrolls to an alias when entering the guide from another route', async () => {
+  it('keeps an alias when entering the guide from another route', async () => {
     const harness = await RouterTestingHarness.create('/downloads');
     const router = TestBed.inject(Router);
     const link = harness.routeNativeElement?.querySelector<HTMLAnchorElement>(

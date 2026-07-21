@@ -15,8 +15,19 @@ from pathlib import PurePosixPath
 
 CONFIG_FILENAME = "config.toml"
 CREDENTIALS_DIRECTORY = "credentials"
+WINDOWS_STARTER_ENTRY = "1_首次設定.cmd"
+WINDOWS_RUNNER_ENTRY = "2_開始抓取.cmd"
 WINDOWS_SCHEDULER_ENTRY = "3_安裝每天早上9點自動抓取.cmd"
 WINDOWS_SCHEDULER_SCRIPT = "install-windows-task.ps1"
+WINDOWS_CMD_ENTRIES = (
+    WINDOWS_STARTER_ENTRY,
+    WINDOWS_RUNNER_ENTRY,
+    WINDOWS_SCHEDULER_ENTRY,
+)
+PARENTHESIZED_CMD_CONTROL_FLOW = re.compile(
+    r"(?im)^\s*if\b[^\r\n]*\(|^\s*for\b[^\r\n]*\bdo\s*\("
+)
+UTF8_BOM = b"\xef\xbb\xbf"
 
 COMMON_REQUIRED = {
     "README.md",
@@ -49,8 +60,8 @@ PLATFORM_FILES = {
     "windows": PlatformFiles(
         executable="GamerCatch.exe",
         driver_node="playwright-driver/node.exe",
-        starter="1_首次設定.cmd",
-        runner="2_開始抓取.cmd",
+        starter=WINDOWS_STARTER_ENTRY,
+        runner=WINDOWS_RUNNER_ENTRY,
         manual="GamerCatch_零基礎使用手冊_Windows.pdf",
         extra_required=(WINDOWS_SCHEDULER_ENTRY, WINDOWS_SCHEDULER_SCRIPT),
     ),
@@ -157,12 +168,43 @@ def validate_manual(data: bytes, name: str) -> None:
 def require_markers(text: str, markers: tuple[str, ...], name: str) -> None:
     missing = [marker for marker in markers if marker not in text]
     if missing:
-        fail(f"{name} is missing required scheduler markers: {missing}")
+        fail(f"{name} is missing required markers: {missing}")
+
+
+def read_utf8_cmd(
+    archive: zipfile.ZipFile, entries: list[str], name: str
+) -> str:
+    data = read_required(archive, entries, name)
+    if data.startswith(UTF8_BOM):
+        fail(f"{name} must be UTF-8 without a byte-order mark")
+    remaining_line_endings = data.replace(b"\r\n", b"")
+    if (
+        b"\r\n" not in data
+        or b"\r" in remaining_line_endings
+        or b"\n" in remaining_line_endings
+    ):
+        fail(f"{name} must use CRLF line endings")
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        fail(f"{name} is not UTF-8: {error}")
+
+
+def reject_parenthesized_cmd_control_flow(script: str, name: str) -> None:
+    if PARENTHESIZED_CMD_CONTROL_FLOW.search(script):
+        fail(f"{name} must not use parenthesized CMD control flow with UTF-8 output")
 
 
 def validate_windows_scheduler(
     archive: zipfile.ZipFile, entries: list[str]
 ) -> None:
+    commands = {
+        name: read_utf8_cmd(archive, entries, name) for name in WINDOWS_CMD_ENTRIES
+    }
+    for name, command in commands.items():
+        reject_parenthesized_cmd_control_flow(command, name)
+        require_markers(command, ("chcp 65001 >nul",), name)
+
     script_data = read_required(archive, entries, WINDOWS_SCHEDULER_SCRIPT)
     try:
         script = script_data.decode("ascii")
@@ -195,14 +237,28 @@ def validate_windows_scheduler(
     if match:
         fail(f"unsafe scheduler privilege or policy setting: {match.group(0)!r}")
 
-    entry_data = read_required(archive, entries, WINDOWS_SCHEDULER_ENTRY)
-    try:
-        entry = entry_data.decode("utf-8")
-    except UnicodeDecodeError as error:
-        fail(f"{WINDOWS_SCHEDULER_ENTRY} is not UTF-8: {error}")
+    runner = commands[WINDOWS_RUNNER_ENTRY]
+    require_markers(
+        runner,
+        (
+            "goto :run_failed",
+            "--no-pause",
+            "有項目未完成，請查看上方錯誤訊息或 last-run.log。",
+        ),
+        WINDOWS_RUNNER_ENTRY,
+    )
+
+    entry = commands[WINDOWS_SCHEDULER_ENTRY]
     require_markers(
         entry,
-        (WINDOWS_SCHEDULER_SCRIPT, "-ExecutionPolicy Bypass"),
+        (
+            WINDOWS_SCHEDULER_SCRIPT,
+            "-ExecutionPolicy Bypass",
+            "goto :install_failed",
+            "--no-pause",
+            "安裝成功。不需要系統管理員權限，也不會儲存 Windows 密碼。",
+            "重新雙擊本檔案會更新原本的排程，不會建立重複工作。",
+        ),
         WINDOWS_SCHEDULER_ENTRY,
     )
 

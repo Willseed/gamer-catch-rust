@@ -8,7 +8,7 @@
 
 到 [GitHub Releases](https://github.com/Willseed/gamer-catch-rust/releases) 下載符合平台的 ZIP，並完整解壓縮。不要直接在 ZIP 裡執行。repository 目前是 Public，任何人都能下載，因此請勿把填入帳號資訊的設定檔或 JSON 金鑰重新上傳。
 
-目前 `v0.1.1` 只提供 Apple Silicon Mac（arm64）與一般 Intel／AMD Windows（x64）。Intel Mac 與 Windows on ARM 暫不支援。
+目前 `v0.1.2` 只提供 Apple Silicon Mac（arm64）與一般 Intel／AMD Windows（x64）。Intel Mac 與 Windows on ARM 暫不支援。
 
 發行包內含圖文手冊（macOS 18 頁、Windows 19 頁）；原始檔也可直接查看：
 
@@ -216,7 +216,7 @@ $env:WINDOWS_TIMESTAMP_URL = "CA 提供的 RFC 3161 URL"
 
 未設定 Windows 簽章時封裝會停止。只有明確製作未簽預覽版時，才可先設定 `$env:ALLOW_UNSIGNED_WINDOWS = "1"`；GitHub Release 會清楚標示預覽版的簽章狀態。
 
-目前 `v0.1.1` Release 是未簽章預覽版：本機 Keychain 尚未提供可用的 Developer ID Application 私鑰，Windows 也尚未申請 Authenticode 憑證。請只從本 repository 的 Release 下載並核對 `SHA256SUMS.txt`，不要關閉作業系統安全功能。
+目前 `v0.1.2` Release 是未簽章預覽版：本機 Keychain 尚未提供可用的 Developer ID Application 私鑰，Windows 也尚未申請 Authenticode 憑證。請只從本 repository 的 Release 下載並核對 `SHA256SUMS.txt`，不要關閉作業系統安全功能。
 
 ## 開發驗證
 
@@ -236,6 +236,7 @@ cargo clippy --locked --all-targets -- -D warnings
 - service account JSON 錯誤：確認該遊戲指向自己的 JSON，且檔案位於設定的路徑。
 - Google 403：通常是 API 未啟用，或該 Sheet 未分享給對應 JSON 的 `client_email`。
 - 輸出欄位重疊：同一試算表、同一工作表不能讓兩個遊戲寫入相同排行／人氣欄。
+- Windows 排程安裝後出現亂碼或 `is not recognized`：若亂碼前已看到 `Scheduled task installed or updated.`，v0.1.1 的 Windows 工作排程通常已建立，亂碼只影響畫面。請完整解壓縮 v0.1.2 或更新版本，將原本的 `config.toml` 與 `credentials` 安全複製到新版資料夾，再於新版資料夾雙擊 `3_安裝每天早上9點自動抓取.cmd`；不必先刪除原 Task，安裝器會直接更新工作與程式路徑。
 - Windows 排程未執行：確認目前帳號仍登入、Task 未停用，以及電腦、網路與喚醒設定可用；再查看 `last-scheduled-run.log`。
 
 排行與人氣是掃描當下的快照。請低頻率執行、不要平行大量抓取，並自行確認及遵守巴哈姆特的服務條款與 robots 規則。

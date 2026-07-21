@@ -45,4 +45,5 @@ Windows 每天上午 9 點自動執行（選用）
 
 若 macOS 阻擋未簽章檔案，請按住 Control 點擊檔案後選「打開」。
 若 Windows 顯示 SmartScreen，請先確認檔案來源可信再選擇執行。
+若排程安裝後出現亂碼或「is not recognized」，且前面已看到「Scheduled task installed or updated.」，v0.1.1 的 Windows 工作排程通常已建立，亂碼只影響畫面。請完整解壓縮 v0.1.2 或更新版本，將原本的 config.toml 與 credentials 安全複製到新版資料夾，再於新版資料夾雙擊「3_安裝每天早上9點自動抓取.cmd」；不必先刪除原 Task，安裝器會直接更新工作與程式路徑。
 若公司政策封鎖 PowerShell 或工作排程器，請聯絡 IT；不要停用防毒或改用系統管理員強行執行。

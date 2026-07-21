@@ -20,11 +20,13 @@ echo 開始抓取所有已啟用的遊戲；首次執行可能需要數分鐘下
 set "RC=%ERRORLEVEL%"
 type "%LOG%"
 echo.
-if "%RC%"=="0" (
-    echo 全部處理完成。
-) else (
-    echo 有項目未完成，請查看上方錯誤訊息或 last-run.log。
-)
+if not "%RC%"=="0" goto :run_failed
+
+echo 全部處理完成。
+goto :done
+
+:run_failed
+echo 有項目未完成，請查看上方錯誤訊息或 last-run.log。
 goto :done
 
 :missing_config
@@ -41,7 +43,10 @@ goto :done
 
 :done
 echo.
+if /I "%~1"=="--no-pause" goto :finish
 echo 按任意鍵關閉視窗...
 pause >nul
+
+:finish
 popd >nul
 exit /b %RC%

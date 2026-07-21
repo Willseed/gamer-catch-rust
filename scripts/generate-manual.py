@@ -30,7 +30,7 @@ from reportlab.platypus import (
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = ROOT / "output" / "pdf"
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 DEFAULT_COLUMN_LAYOUT = "A / B / C"
 PROGRAM_WRITTEN_VALUE = "由程式寫入"
 MACOS_RUN_SCRIPT = "2_開始抓取.command"
@@ -948,6 +948,10 @@ def troubleshoot_page(platform: str):
     ]
     if platform == "Windows":
         rows += [
+            [
+                "排程安裝後出現亂碼",
+                "若亂碼前已看到 Scheduled task installed or updated.，v0.1.1 的 Windows 工作排程通常已建立，亂碼只影響畫面。完整解壓縮 v0.1.2 或更新版本，複製 config.toml 與 credentials，再到新版資料夾雙擊 3_安裝每天早上9點自動抓取.cmd；不必先刪除原 Task。",
+            ],
             ["排程沒有在 09:00 執行", "確認目前帳號仍登入、Task 未停用，以及電腦、網路與喚醒設定可用。"],
             ["排程執行但沒有寫入", f"查看 {WINDOWS_SCHEDULE_LOG}，再檢查今天日期、write_to_google_sheets 與 CAPTCHA。"],
             ["PowerShell 被公司封鎖", "請聯絡 IT 管理員；不要改成 Unrestricted、停用防毒或用系統管理員強行繞過。"],

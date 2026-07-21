@@ -76,6 +76,10 @@ jobs:
           $taskName = "GamerCatch-Daily-0900-$($identity.User.Value)"
           $testRoot = Join-Path $env:RUNNER_TEMP 'GamerCatch path with spaces & (test)'
           $installer = Join-Path $testRoot 'install-windows-task.ps1'
+          $entry = Join-Path $testRoot '3_安裝每天早上9點自動抓取.cmd'
+          $cmdOutputPath = Join-Path $testRoot 'cmd-output.txt'
+          $runnerEntry = Join-Path $testRoot '2_開始抓取.cmd'
+          $runnerOutputPath = Join-Path $testRoot 'runner-output.txt'
           try {
             New-Item -ItemType Directory -Path $testRoot | Out-Null
             New-Item -ItemType Directory -Path (Join-Path $testRoot 'credentials') | Out-Null
@@ -99,12 +103,56 @@ jobs:
             Set-Content -LiteralPath (Join-Path $testRoot 'playwright-driver\node.exe') -Value 'test'
             Set-Content -LiteralPath (Join-Path $testRoot 'playwright-driver\package\cli.js') -Value 'test'
             Copy-Item -LiteralPath '.\scripts\install-windows-task.ps1' -Destination $installer
+            Copy-Item -LiteralPath '.\scripts\3_安裝每天早上9點自動抓取.cmd' -Destination $entry
+            Copy-Item -LiteralPath '.\scripts\2_開始抓取.cmd' -Destination $runnerEntry
 
             $windowsPowerShell = Join-Path $PSHOME 'powershell.exe'
-            & $windowsPowerShell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer
-            if ($LASTEXITCODE -ne 0) {
-              throw "First installer run failed with exit code $LASTEXITCODE."
+            $utf8Strict = New-Object System.Text.UTF8Encoding($false, $true)
+            Push-Location $testRoot
+            try {
+              & $env:ComSpec /D /C 'call "2_開始抓取.cmd" --no-pause < nul > runner-output.txt 2>&1'
+              $runnerExitCode = $LASTEXITCODE
+              $global:LASTEXITCODE = 0
             }
+            finally {
+              Pop-Location
+            }
+            if ($runnerExitCode -ne 7) {
+              throw "The double-click runner returned $runnerExitCode instead of 7."
+            }
+            $runnerOutput = $utf8Strict.GetString([System.IO.File]::ReadAllBytes($runnerOutputPath))
+            if ($runnerOutput.Contains([char]0xFFFD) -or
+                $runnerOutput -match '(?i)is not recognized as an internal or external command') {
+              throw "The double-click runner produced corrupt output: $runnerOutput"
+            }
+            if (-not $runnerOutput.Contains('有項目未完成，請查看上方錯誤訊息或 last-run.log。')) {
+              throw "The double-click runner omitted its Traditional Chinese failure output: $runnerOutput"
+            }
+            Write-Output $runnerOutput
+
+            Push-Location $testRoot
+            try {
+              & $env:ComSpec /D /C 'call "3_安裝每天早上9點自動抓取.cmd" --no-pause < nul > cmd-output.txt 2>&1'
+              $cmdExitCode = $LASTEXITCODE
+              $global:LASTEXITCODE = 0
+            }
+            finally {
+              Pop-Location
+            }
+            if ($cmdExitCode -ne 0) {
+              throw "The double-click CMD installer failed with exit code $cmdExitCode."
+            }
+            $cmdOutput = $utf8Strict.GetString([System.IO.File]::ReadAllBytes($cmdOutputPath))
+            if ($cmdOutput.Contains([char]0xFFFD) -or
+                $cmdOutput -match '(?i)is not recognized as an internal or external command') {
+              throw "The double-click CMD installer produced corrupt output: $cmdOutput"
+            }
+            if (-not $cmdOutput.Contains('安裝成功。不需要系統管理員權限，也不會儲存 Windows 密碼。') -or
+                -not $cmdOutput.Contains('重新雙擊本檔案會更新原本的排程，不會建立重複工作。')) {
+              throw "The double-click CMD installer omitted its Traditional Chinese success output: $cmdOutput"
+            }
+            Write-Output $cmdOutput
+
             & $windowsPowerShell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer
             if ($LASTEXITCODE -ne 0) {
               throw "Repeated installer run failed with exit code $LASTEXITCODE."
@@ -214,10 +262,12 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y poppler-utils
           fi
+          manual_version="$(cargo metadata --locked --no-deps --format-version 1 | python3 -c 'import json, sys; print(json.load(sys.stdin)["packages"][0]["version"])')"
           test "$(pdfinfo output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf | awk '/^Pages:/ { print $2 }')" = "18"
           test "$(pdfinfo output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf | awk '/^Pages:/ { print $2 }')" = "19"
           for manual in output/pdf/*.pdf; do
             pdftotext "$manual" - | grep -F "零基礎設定與操作手冊"
+            pdftotext "$manual" - | grep -F "版本 $manual_version"
             pdftotext "$manual" - | grep -F "service account"
             pdftotext "$manual" - | grep -F "更換遊戲時要修改與確認什麼"
           done

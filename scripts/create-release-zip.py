@@ -9,6 +9,9 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 
+UNICODE_REPLACEMENT_CHARACTER = "\uFFFD"
+
+
 def should_skip(path: Path) -> bool:
     return path.name == ".DS_Store" or path.name.startswith("._")
 
@@ -44,7 +47,7 @@ def add_release_entry(
 
 def is_invalid_entry_name(name: str) -> bool:
     path = PurePosixPath(name)
-    return "�" in name or path.is_absolute() or ".." in path.parts
+    return UNICODE_REPLACEMENT_CHARACTER in name or path.is_absolute() or ".." in path.parts
 
 
 def validate_zip(source: Path, output: Path) -> None:

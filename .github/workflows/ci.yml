@@ -110,13 +110,13 @@ jobs:
             Copy-Item -LiteralPath '.\scripts\install-windows-task.ps1' -Destination $installer
             $entrySource = @(Get-ChildItem -LiteralPath '.\scripts' -Filter '3_*.cmd')
             $runnerSource = @(Get-ChildItem -LiteralPath '.\scripts' -Filter '2_*.cmd')
-            $gmailSource = Get-Item -LiteralPath '.\scripts\Gmail_首次授權.cmd'
-            if ($entrySource.Count -ne 1 -or $runnerSource.Count -ne 1 -or -not $gmailSource) {
+            $gmailSource = @(Get-ChildItem -LiteralPath '.\scripts' -Filter 'Gmail_*.cmd')
+            if ($entrySource.Count -ne 1 -or $runnerSource.Count -ne 1 -or $gmailSource.Count -ne 1) {
               throw 'Expected exactly one runner, scheduler, and Gmail authorizer CMD source.'
             }
             Copy-Item -LiteralPath $entrySource[0].FullName -Destination $entry
             Copy-Item -LiteralPath $runnerSource[0].FullName -Destination $runnerEntry
-            Copy-Item -LiteralPath $gmailSource.FullName -Destination $gmailEntry
+            Copy-Item -LiteralPath $gmailSource[0].FullName -Destination $gmailEntry
 
             $windowsPowerShell = Join-Path $PSHOME 'powershell.exe'
             $utf8Strict = New-Object System.Text.UTF8Encoding($false, $true)

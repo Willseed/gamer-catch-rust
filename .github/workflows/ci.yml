@@ -149,8 +149,10 @@ jobs:
             }
 
             & $windowsPowerShell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer -ScheduledRun
-            if ($LASTEXITCODE -ne 7) {
-              throw "Scheduled mode did not preserve the fake executable exit code: $LASTEXITCODE"
+            $directExitCode = $LASTEXITCODE
+            $global:LASTEXITCODE = 0
+            if ($directExitCode -ne 7) {
+              throw "Scheduled mode did not preserve the fake executable exit code: $directExitCode"
             }
             $logText = Get-Content -LiteralPath $scheduledLog -Raw -Encoding UTF8
             if (-not $logText.Contains('scheduled-test') -or
@@ -184,6 +186,7 @@ jobs:
                 -not $schedulerLogText.Contains('Exit code: 7')) {
               throw "The registered Task Scheduler action did not write the expected log: $schedulerLogText"
             }
+            Write-Output 'The registered Task Scheduler action completed with exit code 7 as expected.'
           }
           finally {
             Unregister-ScheduledTask -TaskName $taskName -TaskPath '\' -Confirm:$false -ErrorAction SilentlyContinue

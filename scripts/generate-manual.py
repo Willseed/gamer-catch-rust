@@ -31,6 +31,10 @@ from reportlab.platypus import (
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = ROOT / "output" / "pdf"
 VERSION = "0.1.0"
+DEFAULT_COLUMN_LAYOUT = "A / B / C"
+PROGRAM_WRITTEN_VALUE = "由程式寫入"
+MACOS_RUN_SCRIPT = "2_開始抓取.command"
+WINDOWS_RUN_SCRIPT = "2_開始抓取.cmd"
 
 NAVY = colors.HexColor("#102A43")
 BLUE = colors.HexColor("#1570EF")
@@ -550,9 +554,9 @@ def prep_page():
         data_table(
             ["編號", "遊戲名稱", "試算表擁有者", "分頁名稱", "JSON 檔名", "欄位"],
             [
-                ["1", "夜鴉", "＿＿＿＿", "每日排名", "person-1-service-account.json", "A / B / C"],
-                ["2", "＿＿＿＿", "＿＿＿＿", "每日排名", "person-2-service-account.json", "A / B / C"],
-                ["3", "＿＿＿＿", "＿＿＿＿", "每日排名", "person-3-service-account.json", "A / B / C"],
+                ["1", "夜鴉", "＿＿＿＿", "每日排名", "person-1-service-account.json", DEFAULT_COLUMN_LAYOUT],
+                ["2", "＿＿＿＿", "＿＿＿＿", "每日排名", "person-2-service-account.json", DEFAULT_COLUMN_LAYOUT],
+                ["3", "＿＿＿＿", "＿＿＿＿", "每日排名", "person-3-service-account.json", DEFAULT_COLUMN_LAYOUT],
             ],
             [12 * mm, 27 * mm, 29 * mm, 25 * mm, 48 * mm, 24 * mm],
         ),
@@ -580,8 +584,8 @@ def sheet_page():
             ["A 欄", "B 欄", "C 欄"],
             [
                 ["日期", "排行", "人氣"],
-                ["2026/7/21", "由程式寫入", "由程式寫入"],
-                ["2026/7/22", "由程式寫入", "由程式寫入"],
+                ["2026/7/21", PROGRAM_WRITTEN_VALUE, PROGRAM_WRITTEN_VALUE],
+                ["2026/7/22", PROGRAM_WRITTEN_VALUE, PROGRAM_WRITTEN_VALUE],
             ],
             [55 * mm, 55 * mm, 55 * mm],
         ),
@@ -735,7 +739,7 @@ def config_fields_page():
         data_table(["欄位", "小白版說明"], rows, [57 * mm, 108 * mm]),
         Spacer(1, 5 * mm),
         callout(
-            "三個人都用 A / B / C 沒問題",
+            f"三個人都用 {DEFAULT_COLUMN_LAYOUT} 沒問題",
             "若三個遊戲寫入三張不同試算表，各自都用 A、B、C 完全正常。只有同一張試算表、同一個分頁時，輸出欄位才不能重疊。",
             "success",
         ),
@@ -782,7 +786,7 @@ def config_examples_page():
 
 
 def dry_run_page(platform: str):
-    runner = "2_開始抓取.command" if platform == "macOS" else "2_開始抓取.cmd"
+    runner = MACOS_RUN_SCRIPT if platform == "macOS" else WINDOWS_RUN_SCRIPT
     return heading("12", "第一次先做安全測試") + [
         callout(
             "所有遊戲先保持 write_to_google_sheets = false",
@@ -810,7 +814,7 @@ def dry_run_page(platform: str):
 
 
 def production_page(platform: str):
-    runner = "2_開始抓取.command" if platform == "macOS" else "2_開始抓取.cmd"
+    runner = MACOS_RUN_SCRIPT if platform == "macOS" else WINDOWS_RUN_SCRIPT
     log_note = (
         "遇到問題可查看同一資料夾的 last-run.log。"
         if platform == "macOS"
@@ -889,7 +893,7 @@ def security_page(platform: str):
 
 def checklist_page(platform: str):
     starter = "1_首次設定.command" if platform == "macOS" else "1_首次設定.cmd"
-    runner = "2_開始抓取.command" if platform == "macOS" else "2_開始抓取.cmd"
+    runner = MACOS_RUN_SCRIPT if platform == "macOS" else WINDOWS_RUN_SCRIPT
     return heading("完成", "最後檢查表") + [
         data_table(
             ["完成", "檢查項目"],

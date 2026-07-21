@@ -9,6 +9,7 @@ import re
 import sys
 import tomllib
 import zipfile
+from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 
@@ -19,6 +20,33 @@ COMMON_REQUIRED = {
     "使用說明.txt",
     "config.example.toml",
     "config.toml",
+}
+
+
+@dataclass(frozen=True)
+class PlatformFiles:
+    executable: str
+    driver_node: str
+    starter: str
+    runner: str
+    manual: str
+
+
+PLATFORM_FILES = {
+    "macos": PlatformFiles(
+        executable="GamerCatch",
+        driver_node="playwright-driver/node",
+        starter="1_首次設定.command",
+        runner="2_開始抓取.command",
+        manual="GamerCatch_零基礎使用手冊_macOS.pdf",
+    ),
+    "windows": PlatformFiles(
+        executable="GamerCatch.exe",
+        driver_node="playwright-driver/node.exe",
+        starter="1_首次設定.cmd",
+        runner="2_開始抓取.cmd",
+        manual="GamerCatch_零基礎使用手冊_Windows.pdf",
+    ),
 }
 
 
@@ -66,7 +94,7 @@ def validate_config(data: bytes) -> None:
 
 def validate_no_local_build_paths(data: bytes) -> None:
     local_path = re.compile(
-        rb"(?:/Users/[^/\x00]+/|/home/runner/work/|[A-Za-z]:\\Users\\[^\\\x00]+\\|[A-Za-z]:\\a\\)",
+        rb"(?:/Users/[^/\x00]+/|/home/runner/work/|[A-Z]:\\Users\\[^\\\x00]+\\|[A-Z]:\\a\\)",
         re.IGNORECASE,
     )
     match = local_path.search(data)
@@ -75,66 +103,100 @@ def validate_no_local_build_paths(data: bytes) -> None:
         fail(f"executable leaks a local build path: {display}")
 
 
-def validate_archive(path: str, platform: str) -> None:
-    executable = "GamerCatch" if platform == "macos" else "GamerCatch.exe"
-    driver_node = "playwright-driver/node" if platform == "macos" else "playwright-driver/node.exe"
-    starter = "1_首次設定.command" if platform == "macos" else "1_首次設定.cmd"
-    runner = "2_開始抓取.command" if platform == "macos" else "2_開始抓取.cmd"
-    manual = (
-        "GamerCatch_零基礎使用手冊_macOS.pdf"
-        if platform == "macos"
-        else "GamerCatch_零基礎使用手冊_Windows.pdf"
+def validate_zip_structure(archive: zipfile.ZipFile) -> list[str]:
+    bad = archive.testzip()
+    if bad:
+        fail(f"ZIP CRC check failed at {bad}")
+
+    entries = [info.filename for info in archive.infolist() if not info.is_dir()]
+    if not entries:
+        fail("ZIP contains no files")
+
+    roots = {PurePosixPath(entry).parts[0] for entry in entries}
+    if len(roots) != 1:
+        fail(f"ZIP must contain exactly one top-level folder, found: {sorted(roots)}")
+
+    for entry in entries:
+        parsed = PurePosixPath(entry)
+        if parsed.is_absolute() or ".." in parsed.parts:
+            fail(f"unsafe ZIP path: {entry}")
+    return entries
+
+
+def validate_required_files(
+    archive: zipfile.ZipFile, entries: list[str], files: PlatformFiles
+) -> tuple[bytes, bytes]:
+    existence_only = (COMMON_REQUIRED - {"config.toml"}) | {
+        files.starter,
+        files.runner,
+        "playwright-driver/package/cli.js",
+    }
+    for required in existence_only:
+        read_required(archive, entries, required)
+
+    validate_config(read_required(archive, entries, "config.toml"))
+    validate_manual(read_required(archive, entries, files.manual), files.manual)
+    return (
+        read_required(archive, entries, files.executable),
+        read_required(archive, entries, files.driver_node),
     )
 
+
+def validate_manual(data: bytes, name: str) -> None:
+    if not data.startswith(b"%PDF-") or b"%%EOF" not in data[-2048:]:
+        fail(f"manual is not a complete PDF: {name}")
+
+
+def validate_binary_format(
+    executable_data: bytes, driver_data: bytes, platform: str
+) -> None:
+    if platform == "windows":
+        if not executable_data.startswith(b"MZ") or not driver_data.startswith(b"MZ"):
+            fail("Windows executable or bundled Node is not a PE file")
+        return
+
+    macho_magics = {b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"\xca\xfe\xba\xbf"}
+    if executable_data[:4] not in macho_magics or driver_data[:4] not in macho_magics:
+        fail("macOS executable or bundled Node is not a Mach-O file")
+
+
+def validate_macos_executable_modes(
+    archive: zipfile.ZipFile, entries: list[str], files: PlatformFiles
+) -> None:
+    required_executables = [
+        files.executable,
+        files.driver_node,
+        files.starter,
+        files.runner,
+    ]
+    for required in required_executables:
+        info = archive.getinfo(matching_entry(entries, required))
+        mode = (info.external_attr >> 16) & 0o777
+        if mode & 0o111 == 0:
+            fail(f"macOS release entry is not executable: {required}")
+
+
+def validate_no_credentials(entries: list[str]) -> None:
+    credential_files = [
+        entry
+        for entry in entries
+        if "/credentials/" in f"/{entry}" and entry.lower().endswith(".json")
+    ]
+    if credential_files:
+        fail(f"release ZIP must not contain credential JSON files: {credential_files}")
+
+
+def validate_archive(path: str, platform: str) -> None:
+    files = PLATFORM_FILES[platform]
+
     with zipfile.ZipFile(path) as archive:
-        bad = archive.testzip()
-        if bad:
-            fail(f"ZIP CRC check failed at {bad}")
-        entries = [info.filename for info in archive.infolist() if not info.is_dir()]
-        if not entries:
-            fail("ZIP contains no files")
-        roots = {PurePosixPath(entry).parts[0] for entry in entries}
-        if len(roots) != 1:
-            fail(f"ZIP must contain exactly one top-level folder, found: {sorted(roots)}")
-        for entry in entries:
-            parsed = PurePosixPath(entry)
-            if parsed.is_absolute() or ".." in parsed.parts:
-                fail(f"unsafe ZIP path: {entry}")
-
-        for required in COMMON_REQUIRED | {executable, starter, runner, manual}:
-            read_required(archive, entries, required)
-        read_required(archive, entries, driver_node)
-        read_required(archive, entries, "playwright-driver/package/cli.js")
-
-        config_data = read_required(archive, entries, "config.toml")
-        validate_config(config_data)
-        manual_data = read_required(archive, entries, manual)
-        if not manual_data.startswith(b"%PDF-") or b"%%EOF" not in manual_data[-2048:]:
-            fail(f"manual is not a complete PDF: {manual}")
-
-        executable_data = read_required(archive, entries, executable)
+        entries = validate_zip_structure(archive)
+        executable_data, driver_data = validate_required_files(archive, entries, files)
         validate_no_local_build_paths(executable_data)
-        driver_data = read_required(archive, entries, driver_node)
-        if platform == "windows":
-            if not executable_data.startswith(b"MZ") or not driver_data.startswith(b"MZ"):
-                fail("Windows executable or bundled Node is not a PE file")
-        else:
-            macho_magics = {b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"\xca\xfe\xba\xbf"}
-            if executable_data[:4] not in macho_magics or driver_data[:4] not in macho_magics:
-                fail("macOS executable or bundled Node is not a Mach-O file")
-            for required_executable in [executable, driver_node, starter, runner]:
-                info = archive.getinfo(matching_entry(entries, required_executable))
-                mode = (info.external_attr >> 16) & 0o777
-                if mode & 0o111 == 0:
-                    fail(f"macOS release entry is not executable: {required_executable}")
-
-        credential_files = [
-            entry
-            for entry in entries
-            if "/credentials/" in f"/{entry}" and entry.lower().endswith(".json")
-        ]
-        if credential_files:
-            fail(f"release ZIP must not contain credential JSON files: {credential_files}")
+        validate_binary_format(executable_data, driver_data, platform)
+        if platform == "macos":
+            validate_macos_executable_modes(archive, entries, files)
+        validate_no_credentials(entries)
 
     print(f"validated {platform} package: {path}")
 

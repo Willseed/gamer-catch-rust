@@ -21,6 +21,51 @@ def add_directory(archive: zipfile.ZipFile, arcname: str, mode: int) -> None:
     archive.writestr(info, b"")
 
 
+def archive_name(source: Path, root_name: str, path: Path) -> str:
+    relative = path.relative_to(source)
+    return (PurePosixPath(root_name) / PurePosixPath(relative.as_posix())).as_posix()
+
+
+def add_release_entry(
+    archive: zipfile.ZipFile,
+    source: Path,
+    root_name: str,
+    path: Path,
+) -> None:
+    arcname = archive_name(source, root_name, path)
+    if path.is_dir():
+        add_directory(archive, arcname, path.stat().st_mode & 0o777)
+        return
+    if path.is_file():
+        archive.write(path, arcname)
+        return
+    raise ValueError(f"unsupported release entry: {path}")
+
+
+def is_invalid_entry_name(name: str) -> bool:
+    path = PurePosixPath(name)
+    return "�" in name or path.is_absolute() or ".." in path.parts
+
+
+def validate_zip(source: Path, output: Path) -> None:
+    with zipfile.ZipFile(output) as archive:
+        names = archive.namelist()
+        if archive.testzip() is not None:
+            raise ValueError("new ZIP failed its CRC check")
+        for name in names:
+            if is_invalid_entry_name(name):
+                raise ValueError(f"invalid ZIP entry name: {name!r}")
+
+        expected_unicode = [
+            path.name
+            for path in source.iterdir()
+            if any(ord(char) > 127 for char in path.name)
+        ]
+        for filename in expected_unicode:
+            if not any(name.endswith(f"/{filename}") for name in names):
+                raise ValueError(f"UTF-8 filename did not round-trip: {filename}")
+
+
 def create_zip(source: Path, output: Path) -> None:
     source = source.resolve(strict=True)
     if not source.is_dir():
@@ -41,26 +86,9 @@ def create_zip(source: Path, output: Path) -> None:
         for path in sorted(source.rglob("*"), key=lambda item: item.as_posix()):
             if should_skip(path):
                 continue
-            relative = path.relative_to(source)
-            arcname = (PurePosixPath(root_name) / PurePosixPath(relative.as_posix())).as_posix()
-            if path.is_dir():
-                add_directory(archive, arcname, path.stat().st_mode & 0o777)
-            elif path.is_file():
-                archive.write(path, arcname)
-            else:
-                raise ValueError(f"unsupported release entry: {path}")
+            add_release_entry(archive, source, root_name, path)
 
-    with zipfile.ZipFile(output) as archive:
-        names = archive.namelist()
-        if archive.testzip() is not None:
-            raise ValueError("new ZIP failed its CRC check")
-        for name in names:
-            if "�" in name or PurePosixPath(name).is_absolute() or ".." in PurePosixPath(name).parts:
-                raise ValueError(f"invalid ZIP entry name: {name!r}")
-        expected_unicode = [path.name for path in source.iterdir() if any(ord(char) > 127 for char in path.name)]
-        for filename in expected_unicode:
-            if not any(name.endswith(f"/{filename}") for name in names):
-                raise ValueError(f"UTF-8 filename did not round-trip: {filename}")
+    validate_zip(source, output)
 
     print(output)
 

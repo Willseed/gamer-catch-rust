@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  PLAYWRIGHT_SKIP_DRIVER_DOWNLOAD: "1"
+
+jobs:
+  rust:
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Install Rust 1.88
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal --component rustfmt clippy
+          rustup default 1.88.0
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Check
+        run: cargo check --locked --all-targets
+
+      - name: Test
+        run: cargo test --locked --all-targets
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Parse PowerShell packaging script
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path '.\scripts\package-windows.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_ }
+            exit 1
+          }
+
+  docs-and-scripts:
+    name: PDF and scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Validate scripts
+        run: |
+          bash -n scripts/package-macos.sh scripts/*.command scripts/*.sh
+          shellcheck scripts/package-macos.sh scripts/*.command scripts/*.sh
+          python3 -m py_compile scripts/generate-manual.py scripts/create-release-zip.py scripts/validate-package.py
+
+      - name: Validate PDF manuals
+        run: |
+          if ! command -v pdfinfo >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y poppler-utils
+          fi
+          for manual in output/pdf/*.pdf; do
+            test "$(pdfinfo "$manual" | awk '/^Pages:/ { print $2 }')" = "17"
+            pdftotext "$manual" - | grep -F "零基礎設定與操作手冊"
+            pdftotext "$manual" - | grep -F "service account"
+          done
+
+      - name: Reject committed credentials
+        run: |
+          suspicious_files="$(git ls-files | grep -Ei '(^|/)(credentials?/.*\.json|[^/]*service[-_]?account[^/]*\.json|[^/]*credentials?[^/]*\.json)$' || true)"
+          if test -n "$suspicious_files"; then
+            echo "Repository contains a possible service-account credential file." >&2
+            printf '%s\n' "$suspicious_files" >&2
+            exit 1
+          fi
+          while IFS= read -r json_file; do
+            if grep -Eq '"type"[[:space:]]*:[[:space:]]*"service_account"' "$json_file"; then
+              echo "Tracked JSON looks like a Google service-account key: $json_file" >&2
+              exit 1
+            fi
+          done < <(git ls-files '*.json')

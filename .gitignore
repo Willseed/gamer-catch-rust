@@ -1,0 +1,12 @@
+/target/
+/vendor/playwright-rs/target/
+/dist/
+/tmp/
+__pycache__/
+*.pyc
+/config.toml
+/credentials/
+/service-account*.json
+/credentials*.json
+*.log
+.DS_Store

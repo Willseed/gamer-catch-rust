@@ -1,0 +1,181 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify-release-source:
+    name: Verify tag source and CI
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require annotated tag at tested main HEAD
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" = "tag"
+          release_commit="$(git rev-parse "$GITHUB_REF_NAME^{commit}")"
+          git fetch origin main --no-tags
+          main_commit="$(git rev-parse origin/main)"
+          if test "$release_commit" != "$main_commit"; then
+            echo "Release tag must point at the current main HEAD." >&2
+            exit 1
+          fi
+
+          package_version="$(cargo metadata --locked --no-deps --format-version 1 | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["packages"][0]["version"])')"
+          if test "$GITHUB_REF_NAME" != "v$package_version"; then
+            echo "Tag $GITHUB_REF_NAME does not match Cargo version $package_version." >&2
+            exit 1
+          fi
+          if test ! -f "packaging/release-notes-$GITHUB_REF_NAME.md"; then
+            echo "Missing release notes for $GITHUB_REF_NAME." >&2
+            exit 1
+          fi
+
+          successful_runs="$(gh api --method GET \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" \
+            -f head_sha="$release_commit" \
+            -f event=push \
+            -f status=completed \
+            -f per_page=100 \
+            --jq '[.workflow_runs[] | select(.conclusion == "success" and .head_branch == "main")] | length')"
+          if test "$successful_runs" -lt 1; then
+            echo "No successful main push CI run exists for $release_commit." >&2
+            exit 1
+          fi
+
+          suspicious_files="$(git ls-files | grep -Ei '(^|/)(credentials?/.*\.json|[^/]*service[-_]?account[^/]*\.json|[^/]*credentials?[^/]*\.json)$' || true)"
+          if test -n "$suspicious_files"; then
+            echo "Repository contains a possible service-account credential file." >&2
+            printf '%s\n' "$suspicious_files" >&2
+            exit 1
+          fi
+          while IFS= read -r json_file; do
+            if grep -Eq '"type"[[:space:]]*:[[:space:]]*"service_account"' "$json_file"; then
+              echo "Tracked JSON looks like a Google service-account key: $json_file" >&2
+              exit 1
+            fi
+          done < <(git ls-files '*.json')
+
+  macos:
+    name: Package macOS arm64
+    needs: verify-release-source
+    runs-on: macos-15
+    env:
+      # Preview builds are intentionally unsigned until the repository has
+      # Developer ID and notarytool secrets configured.
+      ALLOW_UNSIGNED_MACOS: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Install Rust 1.88
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal
+          rustup default 1.88.0
+
+      - name: Build package
+        run: ./scripts/package-macos.sh
+
+      - name: Validate package
+        run: python3 scripts/validate-package.py --platform macos dist/GamerCatch-macOS-arm64.zip
+
+      - name: Upload macOS assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: macos-assets
+          if-no-files-found: error
+          path: |
+            dist/GamerCatch-macOS-arm64.zip
+            output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf
+
+  windows:
+    name: Package Windows x64
+    needs: verify-release-source
+    runs-on: windows-latest
+    env:
+      # The owner does not yet have an Authenticode certificate. This makes
+      # the unsigned preview decision explicit instead of silently falling back.
+      ALLOW_UNSIGNED_WINDOWS: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Install Rust 1.88
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal
+          rustup default 1.88.0
+
+      - name: Build package
+        shell: pwsh
+        run: .\scripts\package-windows.ps1
+
+      - name: Validate package
+        run: python scripts/validate-package.py --platform windows dist/GamerCatch-Windows-x64.zip
+
+      - name: Upload Windows assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-assets
+          if-no-files-found: error
+          path: |
+            dist/GamerCatch-Windows-x64.zip
+            output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf
+
+  publish:
+    name: Publish GitHub prerelease
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Download packaged assets
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Validate release assets
+        run: |
+          python3 scripts/validate-package.py --platform macos release-assets/GamerCatch-macOS-arm64.zip
+          python3 scripts/validate-package.py --platform windows release-assets/GamerCatch-Windows-x64.zip
+          test -s release-assets/GamerCatch_零基礎使用手冊_macOS.pdf
+          test -s release-assets/GamerCatch_零基礎使用手冊_Windows.pdf
+          cd release-assets
+          sha256sum GamerCatch-* > SHA256SUMS.txt
+
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release-assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "GamerCatch $GITHUB_REF_NAME（腳本版預覽）" \
+            --notes-file "packaging/release-notes-$GITHUB_REF_NAME.md" \
+            --prerelease \
+            --verify-tag

@@ -1,0 +1,30 @@
+巴哈多遊戲排行抓取工具 — 雙擊使用說明
+
+如果第一次使用，請先閱讀資料夾內對應平台的「GamerCatch_零基礎使用手冊」PDF。
+
+第一次使用
+1. 先把整個發行資料夾解壓縮，不要直接在 ZIP 裡執行。
+2. macOS 雙擊「1_首次設定.command」；Windows 雙擊「1_首次設定.cmd」。
+3. 將每個人的 Google service account JSON 放進 credentials 資夾。
+4. 在開啟的 config.toml 依照註解填寫遊戲、試算表與 JSON 檔名，然後儲存。
+5. 先保持 write_to_google_sheets = false 測試。
+
+平常執行
+- macOS：雙擊「2_開始抓取.command」。
+- Windows：雙擊「2_開始抓取.cmd」。
+- 確認排行與人氣正確後，才把各遊戲的 write_to_google_sheets 改成 true。
+- 執行結果也會保存在同一資料夾的 last-run.log。
+
+多遊戲與多人帳號
+- 每一個 [[games]] 區塊代表一個遊戲、一張 Google Sheet 與一份登入憑證。
+- 不同人的 service_account_key_path 可以指向不同 JSON。
+- 若兩項剛好使用同一帳號，也可以重複填同一個 JSON 路徑。
+- 要啟用第二、第三個遊戲，將其 enabled 改成 true 並填完該區塊。
+
+安全提醒
+- service account JSON 內含私鑰，不可傳到公開網站、Git 或群組聊天室。
+- 每張試算表都要分享「編輯者」權限給該 JSON 裡的 client_email。
+- 日期欄必須有今天的日期；工具不會自動新增資料列。
+
+若 macOS 阻擋未簽章檔案，請按住 Control 點擊檔案後選「打開」。
+若 Windows 顯示 SmartScreen，請先確認檔案來源可信再選擇執行。

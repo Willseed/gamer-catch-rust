@@ -566,7 +566,10 @@ def prep_page():
         bullet("Google 試算表的完整網址。最簡單的方法就是從瀏覽器網址列全部複製。"),
         bullet("試算表底部的工作表分頁名稱，例如「每日排名」。這不是上方的檔案名稱。"),
         bullet("日期、排行、人氣分別在哪一欄，例如 A、B、C。"),
-        bullet("該遊戲自己使用的 service account JSON。三個遊戲可以用三份不同 JSON。"),
+        bullet(
+            "該遊戲自己使用的 service account JSON。三個遊戲可以用三份不同 JSON。"
+            "現在看不懂沒關係，第 5 頁起會逐步說明。"
+        ),
         Spacer(1, 5 * mm),
         callout(
             "先做一個遊戲也可以",

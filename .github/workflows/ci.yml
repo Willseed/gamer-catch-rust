@@ -28,7 +28,7 @@ jobs:
 
       - name: Install Rust 1.88
         run: |
-          rustup toolchain install 1.88.0 --profile minimal --component rustfmt clippy
+          rustup toolchain install 1.88.0 --profile minimal --component rustfmt --component clippy
           rustup default 1.88.0
 
       - name: Format

@@ -29,7 +29,7 @@
         <ol>
           @for (section of sections; track section.id; let number = $index) {
             <li>
-              <a [href]="'#' + section.id">
+              <a routerLink="/guide" [fragment]="section.id">
                 <span>{{ number + 1 }}</span
                 >{{ section.label }}
               </a>
@@ -152,8 +152,8 @@
         <div class="callout callout--warning" role="note">
           <strong>只從官方 GitHub Release 下載</strong>
           先核對 repository 是 <code>Willseed/gamer-catch-rust</code>，並依
-          <a href="#checksum">SHA-256 章節</a>核對檔案。不要關閉 Gatekeeper、SmartScreen
-          或防毒軟體。
+          <a routerLink="/guide" fragment="checksum">SHA-256 章節</a>核對檔案。不要關閉
+          Gatekeeper、SmartScreen 或防毒軟體。
         </div>
 
         <h3>第一次設定</h3>
@@ -281,8 +281,10 @@
         <div class="callout callout--info" role="note">
           <strong>還沒有 JSON 沒關係</strong>
           先記住「每個遊戲都要指向自己使用的 JSON」。接著依
-          <a href="#google-sheets-api">第 5 章啟用 Sheets API</a>，再到
-          <a href="#service-account">第 6 章建立並下載 service account JSON</a>；不需要現在就會。
+          <a routerLink="/guide" fragment="google-sheets-api">第 5 章啟用 Sheets API</a>，再到
+          <a routerLink="/guide" fragment="service-account"
+            >第 6 章建立並下載 service account JSON</a
+          >；不需要現在就會。
         </div>
 
         <div class="callout callout--success" role="note">
@@ -1586,7 +1588,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
         <output class="callout callout--success">
           <strong>完成</strong>
           您已設定多遊戲、多人 Google Sheets 與選用的 Gmail 通知。日後新增或更換遊戲，回到
-          <a href="#change-game">更換遊戲章節</a>，再重新做不寫入測試。
+          <a routerLink="/guide" fragment="change-game">更換遊戲章節</a>，再重新做不寫入測試。
         </output>
       </section>
     </article>

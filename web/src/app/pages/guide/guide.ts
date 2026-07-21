@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 interface GuideSection {
   readonly id: string;
@@ -8,6 +9,7 @@ interface GuideSection {
 
 @Component({
   selector: 'app-guide',
+  imports: [RouterLink],
   templateUrl: './guide.html',
   styleUrl: './guide.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

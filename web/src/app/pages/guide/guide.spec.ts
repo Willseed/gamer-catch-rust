@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { GuidePage } from './guide';
 
@@ -8,6 +9,7 @@ describe('GuidePage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [GuidePage],
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(GuidePage);
@@ -49,7 +51,7 @@ describe('GuidePage', () => {
 
     for (const id of expectedIds) {
       expect(element.querySelector(`section#${id}`)).not.toBeNull();
-      expect(element.querySelector(`nav a[href="#${id}"]`)).not.toBeNull();
+      expect(element.querySelector(`nav a[href="/guide#${id}"]`)).not.toBeNull();
       expect(element.querySelector(`[data-section-link="${id}"]`)).not.toBeNull();
     }
   });
@@ -93,25 +95,27 @@ describe('GuidePage', () => {
 
   it('keeps public deep links used by the package and website', () => {
     const element = fixture.nativeElement as HTMLElement;
-    const publicAliases = [
-      'quick-start',
-      'first-setup-macos',
-      'first-setup-windows',
-      'multiple-games-and-accounts',
-      'prepare-google-sheet',
-      'worksheet-date-rules',
-      'share-google-sheet',
-      'credentials-folder',
-      'gmail-api',
-      'config-reference',
-      'safe-test',
-      'daily-use',
-      'upgrade',
-      'checksums',
-    ];
+    const publicAliases = new Map([
+      ['quick-start', 'system-safety'],
+      ['first-setup-macos', 'system-safety'],
+      ['first-setup-windows', 'system-safety'],
+      ['multiple-games-and-accounts', 'multiple-games-accounts'],
+      ['prepare-google-sheet', 'prepare-sheets'],
+      ['worksheet-date-rules', 'prepare-sheets'],
+      ['share-google-sheet', 'share-sheets'],
+      ['credentials-folder', 'credentials'],
+      ['gmail-api', 'gmail-oauth'],
+      ['config-reference', 'config-fields'],
+      ['safe-test', 'dry-run'],
+      ['daily-use', 'production-run'],
+      ['upgrade', 'update'],
+      ['checksums', 'checksum'],
+    ]);
 
-    for (const id of publicAliases) {
-      expect(element.querySelector(`#${id}`)).not.toBeNull();
+    for (const [aliasId, sectionId] of publicAliases) {
+      const alias = element.querySelector(`#${aliasId}`);
+      expect(alias).not.toBeNull();
+      expect(alias?.closest('.guide-section')?.id).toBe(sectionId);
     }
   });
 

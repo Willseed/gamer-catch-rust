@@ -211,6 +211,20 @@ jobs:
           response_file="$RUNNER_TEMP/gamercatch-guide.html"
           curl --fail --silent --show-error --proto '=https' \
             --retry 30 --retry-delay 10 --retry-all-errors \
+            --header 'Cache-Control: no-cache' \
             --output "$response_file" \
             "https://$SITE_DOMAIN/guide#quick-start"
           grep --fixed-strings 'data-gamercatch-site="angular-guide"' "$response_file" > /dev/null
+
+          robots_headers="$RUNNER_TEMP/gamercatch-robots.headers"
+          robots_file="$RUNNER_TEMP/gamercatch-robots.txt"
+          curl --fail --silent --show-error --proto '=https' \
+            --retry 30 --retry-delay 10 --retry-all-errors \
+            --header 'Cache-Control: no-cache' \
+            --dump-header "$robots_headers" \
+            --output "$robots_file" \
+            "https://$SITE_DOMAIN/robots.txt"
+          grep --ignore-case --extended-regexp \
+            '^content-type: text/plain(; charset=utf-8)?' \
+            "$robots_headers" > /dev/null
+          cmp web/dist/cloudflare/browser/robots.txt "$robots_file"

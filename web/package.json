@@ -5,7 +5,8 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "build:cloudflare": "ng build --output-path dist/cloudflare",
+    "build:cloudflare": "ng build --output-path dist/cloudflare && npm run verify:static-seo",
+    "verify:static-seo": "node scripts/verify-static-seo.mjs dist/cloudflare/browser",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:ci": "ng test --watch=false"

@@ -30,11 +30,14 @@ from reportlab.platypus import (
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = ROOT / "output" / "pdf"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 DEFAULT_COLUMN_LAYOUT = "A / B / C"
 PROGRAM_WRITTEN_VALUE = "由程式寫入"
 MACOS_RUN_SCRIPT = "2_開始抓取.command"
 WINDOWS_RUN_SCRIPT = "2_開始抓取.cmd"
+WINDOWS_SCHEDULE_LAUNCHER = "3_安裝每天早上9點自動抓取.cmd"
+WINDOWS_SCHEDULE_SCRIPT = "install-windows-task.ps1"
+WINDOWS_SCHEDULE_LOG = "last-scheduled-run.log"
 
 NAVY = colors.HexColor("#102A43")
 BLUE = colors.HexColor("#1570EF")
@@ -491,6 +494,7 @@ def cover(platform: str):
 
 def download_page(platform: str):
     items = heading("01", "下載正確版本並完整解壓縮", "最常見的失敗原因，就是直接在 ZIP 裡執行，或只把其中一個檔案拖出來。")
+    launcher_types = ".command" if platform == "macOS" else ".cmd 或 .ps1"
     if platform == "macOS":
         items += [
             step(1, "確認晶片", "點左上角蘋果選單，再點「關於這台 Mac」。本版只支援 Apple M1、M2、M3、M4 等 Apple Silicon 晶片；Intel Mac 暫不支援。"),
@@ -503,13 +507,18 @@ def download_page(platform: str):
             step(1, "確認系統類型", "開啟「設定」→「系統」→「關於」。本版只支援一般 Intel 或 AMD 的 x64 電腦；Snapdragon、Windows on ARM 暫不支援。"),
             step(2, "下載 ZIP", "從本專案的 GitHub Release 下載 <b>GamerCatch-Windows-x64.zip</b>。若系統類型顯示 ARM，請不要下載本版。"),
             step(3, "全部解壓縮", "在 ZIP 上按右鍵，選「全部解壓縮」。請進入解壓縮完成的新資料夾後再操作。"),
-            step(4, "確認檔案", "資料夾內應看到 GamerCatch.exe、兩個 .cmd、config.toml、credentials、playwright-driver 與本手冊。"),
+            step(
+                4,
+                "確認檔案",
+                f"資料夾內應看到 GamerCatch.exe、三個 .cmd、{WINDOWS_SCHEDULE_SCRIPT}、"
+                "config.toml、credentials、playwright-driver 與本手冊。",
+            ),
         ]
     items += [
         Spacer(1, 4 * mm),
         callout(
             "不要拆散資料夾",
-            "主程式、雙擊腳本與 playwright-driver 必須放在一起。不要只複製 .command、.cmd 或執行檔。",
+            f"主程式、雙擊腳本與 playwright-driver 必須放在一起。不要只複製 {launcher_types} 或執行檔。",
             "danger",
         ),
         PageBreak(),
@@ -823,6 +832,11 @@ def production_page(platform: str):
         if platform == "macOS"
         else "程式會把 last-run.log 留在同一資料夾，方便回看錯誤。"
     )
+    schedule_note = (
+        f"若想每天自動執行，請先完成本頁，再看下一頁的 {WINDOWS_SCHEDULE_LAUNCHER}。"
+        if platform == "Windows"
+        else ""
+    )
     return heading("13", "開啟正式寫入與平常執行") + [
         p("建議一次只開啟一個遊戲，確認試算表真的寫對，再開下一個。"),
         step(1, "先開遊戲 1", "把第 1 個遊戲改成 write_to_google_sheets = true，儲存。其他遊戲仍保持 false。"),
@@ -832,7 +846,7 @@ def production_page(platform: str):
         Spacer(1, 4 * mm),
         callout(
             "平常只需要雙擊開始抓取",
-            f"看到「全部處理完成」後即可關閉視窗。{log_note}",
+            f"看到「全部處理完成」後即可關閉視窗。{log_note}{schedule_note}",
             "success",
         ),
         Spacer(1, 5 * mm),
@@ -845,7 +859,80 @@ def production_page(platform: str):
     ]
 
 
-def troubleshoot_page():
+def windows_schedule_page():
+    return heading(
+        "13-1",
+        "Windows：每天 09:00 自動抓取",
+        "這是選用功能。09:00 是 Windows 的本機時間；試算表要找哪一天，仍由每個遊戲的 timezone 決定。",
+    ) + [
+        callout(
+            "先手動成功，再安裝排程",
+            f"請先用 {WINDOWS_RUN_SCRIPT} 完成安全測試與正式寫入，確認所有遊戲、JSON、試算表和日期列都正確。安裝排程不會立刻抓取。",
+            "warning",
+        ),
+        Spacer(1, 4 * mm),
+        step(1, "先把資料夾放到固定位置", "建議放在文件等不會移動的位置。Task 會記住這個資料夾的完整路徑。"),
+        step(2, f"雙擊 {WINDOWS_SCHEDULE_LAUNCHER}", "畫面不會要求系統管理員權限，也不會永久修改 PowerShell 執行原則。"),
+        step(3, "確認安裝完成", "視窗會顯示 Task 名稱與下一次執行時間。重複雙擊會更新同一個 Task，不會一直增加副本。"),
+        step(4, f"隔天查看 {WINDOWS_SCHEDULE_LOG}", "一個 Task 會處理 config.toml 內所有 enabled = true 的遊戲與各自的 JSON。若遇到 CAPTCHA，仍需手動處理。"),
+        Spacer(1, 4 * mm),
+        p("什麼情況會執行", "h2"),
+        bullet("Task 使用目前登入的 Windows 帳號與標準權限，不需要密碼或系統管理員。鎖定畫面仍可執行，但登出後不會執行。"),
+        bullet("睡眠時會在硬體與電源設定允許時嘗試喚醒；完全關機不能喚醒。錯過 09:00 時，會在之後登入且電腦與網路可用時補跑。"),
+        bullet("排程仍遵守 headless 設定。false 會在 09:00 開啟 Chromium；改成 true 可在背景執行，但遇到巴哈安全驗證時仍要改回 false 手動處理。"),
+        bullet("要停用或刪除時，搜尋並開啟「工作排程器」，在「工作排程器程式庫」找到 GamerCatch-Daily-0900 開頭的項目。"),
+        Spacer(1, 4 * mm),
+        callout(
+            "搬動資料夾或更新版本後要重裝",
+            f"移動、改名或換到新版資料夾後，請在新位置重新雙擊 {WINDOWS_SCHEDULE_LAUNCHER}，讓 Task 更新成新路徑。",
+            "info",
+        ),
+        PageBreak(),
+    ]
+
+
+def change_game_page(platform: str):
+    rows = [
+        ["game_name", "改成巴哈排行卡片上的完整新名稱，空格與符號都要一致。"],
+        ["end_page", "新遊戲若不在目前掃描範圍，提高 [bahamut] 的 end_page；這會套用到所有遊戲。"],
+        ["試算表與分頁", "換表時修改 spreadsheet_id 與 worksheet_name。"],
+        ["JSON", "換擁有者或帳號時修改 service_account_key_path，並把新表分享給該 JSON 的 client_email。"],
+        ["日期列與欄位", "核對 first_data_row、date_column、rank_column、popularity_column，並先建立今天日期。"],
+        ["啟用狀態", "新遊戲設 enabled = true；不用的舊遊戲設 false，避免兩個區塊同時執行。"],
+    ]
+    items = heading(
+        "14",
+        "更換遊戲時要修改與確認什麼",
+        "不需要重裝 GamerCatch。先備份目前可用的 config.toml，再只修改要更換的 [[games]] 區塊。",
+    ) + [
+        callout(
+            "第一步先關閉寫入",
+            "把新遊戲的 write_to_google_sheets 改成 false。確認抓到正確遊戲前，不要讓它寫入任何試算表。",
+            "warning",
+        ),
+        Spacer(1, 4 * mm),
+        data_table(["要檢查的設定", "換遊戲時怎麼改"], rows, [48 * mm, 117 * mm]),
+        Spacer(1, 5 * mm),
+        p("改完後依序確認", "h2"),
+        step(1, "先確認權限與日期", "新試算表已分享給正確 client_email，而且今天日期列已存在。"),
+        step(2, "先做不寫入測試", f"儲存 config.toml，雙擊 {MACOS_RUN_SCRIPT if platform == 'macOS' else WINDOWS_RUN_SCRIPT}，核對遊戲名稱、排行、人氣與 page。"),
+        step(3, "一次只開一個正式寫入", "測試正確後，只把新遊戲的 write_to_google_sheets 改成 true，再核對寫入的試算表、分頁、日期列與欄位。"),
+        step(4, "找不到時再擴大頁數", "先確認 game_name 完全相同，再逐步提高 end_page；不要一開始就設成最大值。"),
+    ]
+    if platform == "Windows":
+        items += [
+            Spacer(1, 4 * mm),
+            callout(
+                "只改 config.toml 不必重裝 Task",
+                f"每日排程每次都會讀取同一份 config.toml。只有搬動資料夾或換到新版資料夾時，才要重新雙擊 {WINDOWS_SCHEDULE_LAUNCHER}。",
+                "success",
+            ),
+        ]
+    items += [PageBreak()]
+    return items
+
+
+def troubleshoot_page(platform: str):
     rows = [
         ["發行檔不完整", "完整解壓縮整個資料夾；不要單獨移動腳本或主程式。"],
         ["Chromium 安裝失敗", "確認網路、代理與磁碟空間，再雙擊首次設定。"],
@@ -859,7 +946,13 @@ def troubleshoot_page():
         ["日期重複", "今天只能出現一次；修正重複日期列後重試。"],
         ["輸出欄位重疊", "同一試算表與同一分頁的不同遊戲不可共用排行或人氣欄。"],
     ]
-    return heading("14", "常見錯誤快速對照") + [
+    if platform == "Windows":
+        rows += [
+            ["排程沒有在 09:00 執行", "確認目前帳號仍登入、Task 未停用，以及電腦、網路與喚醒設定可用。"],
+            ["排程執行但沒有寫入", f"查看 {WINDOWS_SCHEDULE_LOG}，再檢查今天日期、write_to_google_sheets 與 CAPTCHA。"],
+            ["PowerShell 被公司封鎖", "請聯絡 IT 管理員；不要改成 Unrestricted、停用防毒或用系統管理員強行繞過。"],
+        ]
+    return heading("15", "常見錯誤快速對照") + [
         data_table(["看到的訊息", "怎麼處理"], rows, [52 * mm, 113 * mm]),
         Spacer(1, 4 * mm),
         callout(
@@ -872,15 +965,24 @@ def troubleshoot_page():
 
 
 def security_page(platform: str):
-    log_name = "last-run.log"
-    return heading("15", "私鑰安全、更新與求助") + [
+    log_name = (
+        "last-run.log 或 last-scheduled-run.log"
+        if platform == "Windows"
+        else "last-run.log"
+    )
+    update_schedule_note = (
+        f"Windows 使用者還要在新版資料夾重新雙擊 {WINDOWS_SCHEDULE_LAUNCHER}，更新 Task 路徑。"
+        if platform == "Windows"
+        else ""
+    )
+    return heading("16", "私鑰安全、更新與求助") + [
         p("如果懷疑 JSON 外洩", "h2"),
         step(1, "立刻撤銷舊金鑰", "到 Google Cloud 的 service account「金鑰」頁面，停用或刪除舊金鑰。"),
         step(2, "建立新 JSON", "下載新金鑰，替換 credentials 裡的舊檔。試算表已分享給同一 service account 時，通常不需要重新分享。"),
         p("更新 GamerCatch", "h2"),
         bullet("先備份舊資料夾中的 config.toml 與整個 credentials。"),
         bullet("把新版解壓縮到新資料夾，不要直接覆蓋舊版。"),
-        bullet("複製自己的設定與 JSON 到新版，先以 write_to_google_sheets=false 測試。"),
+        bullet(f"複製自己的設定與 JSON 到新版，先以 write_to_google_sheets=false 測試。{update_schedule_note}"),
         p("求助時可以提供", "h2"),
         bullet(f"作業系統 {platform}、x64 / arm64，以及 GitHub Release 版本。"),
         bullet(f"完整錯誤畫面或 {log_name}。上傳前仍應檢查是否含個人路徑。"),
@@ -897,21 +999,29 @@ def security_page(platform: str):
 def checklist_page(platform: str):
     starter = "1_首次設定.command" if platform == "macOS" else "1_首次設定.cmd"
     runner = MACOS_RUN_SCRIPT if platform == "macOS" else WINDOWS_RUN_SCRIPT
+    rows = [
+        ["□", "已完整解壓縮，沒有直接在 ZIP 裡執行。"],
+        ["□", f"已雙擊 {starter} 並完成 Chromium 準備。"],
+        ["□", "每位使用者的 Cloud 專案都已啟用 Google Sheets API。"],
+        ["□", "每份 JSON 都是 service account key，並放在 credentials。"],
+        ["□", "每張試算表都已分享給正確 client_email，權限為編輯者。"],
+        ["□", "config.toml 的遊戲、網址、分頁、JSON 與欄位配對正確。"],
+        ["□", "第一次測試時所有 write_to_google_sheets 都是 false。"],
+        ["□", "已確認每個遊戲的排行與人氣正確。"],
+        ["□", "已逐一開啟 true，並在每張試算表核對今天資料。"],
+        ["□", f"平常只需雙擊 {runner}。"],
+    ]
+    if platform == "Windows":
+        rows.append(
+            [
+                "□",
+                f"若要自動執行，已用 {WINDOWS_SCHEDULE_LAUNCHER} 確認目前帳號與每日 09:00。",
+            ]
+        )
     return heading("完成", "最後檢查表") + [
         data_table(
             ["完成", "檢查項目"],
-            [
-                ["□", "已完整解壓縮，沒有直接在 ZIP 裡執行。"],
-                ["□", f"已雙擊 {starter} 並完成 Chromium 準備。"],
-                ["□", "每位使用者的 Cloud 專案都已啟用 Google Sheets API。"],
-                ["□", "每份 JSON 都是 service account key，並放在 credentials。"],
-                ["□", "每張試算表都已分享給正確 client_email，權限為編輯者。"],
-                ["□", "config.toml 的遊戲、網址、分頁、JSON 與欄位配對正確。"],
-                ["□", "第一次測試時所有 write_to_google_sheets 都是 false。"],
-                ["□", "已確認每個遊戲的排行與人氣正確。"],
-                ["□", "已逐一開啟 true，並在每張試算表核對今天資料。"],
-                ["□", f"平常只需雙擊 {runner}。"],
-            ],
+            rows,
             [18 * mm, 147 * mm],
         ),
         Spacer(1, 7 * mm),
@@ -931,7 +1041,7 @@ def checklist_page(platform: str):
         Spacer(1, 10 * mm),
         callout(
             "完成",
-            "您已經把多遊戲、多人的 Google Sheets 完整分開設定。日後新增遊戲，只要複製一個 [[games]] 區塊並換成該遊戲自己的資料。",
+            "您已經把多遊戲、多人的 Google Sheets 完整分開設定。日後新增或更換遊戲，請依第 14 章修改並重新做安全測試。",
             "success",
         ),
     ]
@@ -939,7 +1049,7 @@ def checklist_page(platform: str):
 
 def story(platform: str):
     parts = []
-    for section in [
+    sections = [
         cover(platform),
         download_page(platform),
         safety_page(platform),
@@ -954,10 +1064,16 @@ def story(platform: str):
         config_examples_page(),
         dry_run_page(platform),
         production_page(platform),
-        troubleshoot_page(),
+    ]
+    if platform == "Windows":
+        sections.append(windows_schedule_page())
+    sections += [
+        change_game_page(platform),
+        troubleshoot_page(platform),
         security_page(platform),
         checklist_page(platform),
-    ]:
+    ]
+    for section in sections:
         parts.extend(section)
     return parts
 

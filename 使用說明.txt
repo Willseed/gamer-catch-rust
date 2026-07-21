@@ -15,6 +15,23 @@
 - 確認排行與人氣正確後，才把各遊戲的 write_to_google_sheets 改成 true。
 - 執行結果也會保存在同一資料夾的 last-run.log。
 
+Windows 每天上午 9 點自動執行（選用）
+1. 先確認手動抓取及 Google Sheets 正式寫入都成功。
+2. 把整個 GamerCatch 資料夾放在不會移動的位置。
+3. 雙擊「3_安裝每天早上9點自動抓取.cmd」。不需要系統管理員權限或密碼。
+4. 一個 Task 會處理 config.toml 裡所有 enabled = true 的遊戲；結果寫在 last-scheduled-run.log。
+5. 目前 Windows 帳號必須保持登入。鎖定畫面可以執行；登出或完全關機時無法準時執行。
+6. headless = false 時會在 09:00 開啟 Chromium；改成 true 可在背景執行，但遇到安全驗證仍要手動處理。
+7. 移動資料夾或換到新版資料夾後，請在新位置再安裝一次以更新路徑。
+
+更換遊戲
+1. 先備份 config.toml，並把要更換的區塊設為 write_to_google_sheets = false。
+2. 修改 game_name；找不到新遊戲時，再逐步提高 [bahamut] 的 end_page。
+3. 若換試算表或擁有者，修改 spreadsheet_id、worksheet_name、service_account_key_path、日期列及欄位。
+4. 新試算表要分享給該 JSON 的 client_email，並先建立今天日期。
+5. 先手動測試排行、人氣與 page 正確，再只開啟新遊戲的正式寫入。
+6. 不用的舊遊戲設 enabled = false。Windows 只改 config.toml 時不必重裝 Task。
+
 多遊戲與多人帳號
 - 每一個 [[games]] 區塊代表一個遊戲、一張 Google Sheet 與一份登入憑證。
 - 不同人的 service_account_key_path 可以指向不同 JSON。
@@ -28,3 +45,4 @@
 
 若 macOS 阻擋未簽章檔案，請按住 Control 點擊檔案後選「打開」。
 若 Windows 顯示 SmartScreen，請先確認檔案來源可信再選擇執行。
+若公司政策封鎖 PowerShell 或工作排程器，請聯絡 IT；不要停用防毒或改用系統管理員強行執行。

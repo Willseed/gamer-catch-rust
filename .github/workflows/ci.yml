@@ -43,20 +43,151 @@ jobs:
       - name: Clippy
         run: cargo clippy --locked --all-targets -- -D warnings
 
-      - name: Parse PowerShell packaging script
+      - name: Validate Windows PowerShell 5.1 scripts
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: powershell
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path '.\scripts\package-windows.ps1'),
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_ }
-            exit 1
+          Get-ChildItem '.\scripts\*.ps1' | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_ }
+              exit 1
+            }
+          }
+
+      - name: Test daily scheduled task registration and execution
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+          $windowsPrincipal = New-Object System.Security.Principal.WindowsPrincipal($identity)
+          $runnerIsAdministrator = $windowsPrincipal.IsInRole(
+            [System.Security.Principal.WindowsBuiltInRole]::Administrator
+          )
+          Write-Host "GitHub runner token is administrator: $runnerIsAdministrator"
+          Write-Host 'The task itself is still asserted as Interactive and Limited.'
+          $taskName = "GamerCatch-Daily-0900-$($identity.User.Value)"
+          $testRoot = Join-Path $env:RUNNER_TEMP 'GamerCatch path with spaces & (test)'
+          $installer = Join-Path $testRoot 'install-windows-task.ps1'
+          try {
+            New-Item -ItemType Directory -Path $testRoot | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $testRoot 'credentials') | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $testRoot 'playwright-driver\package') | Out-Null
+            $fakeSource = @'
+          using System;
+          public static class FakeGamerCatch {
+              public static int Main(string[] args) {
+                  Console.WriteLine("scheduled-test");
+                  if (args.Length == 2 && args[0] == "--config" && args[1].EndsWith("config.toml")) {
+                      return 7;
+                  }
+                  return 8;
+              }
+          }
+          '@
+            Add-Type -TypeDefinition $fakeSource `
+              -OutputAssembly (Join-Path $testRoot 'GamerCatch.exe') `
+              -OutputType ConsoleApplication
+            Set-Content -LiteralPath (Join-Path $testRoot 'config.toml') -Value 'schema_version = 2'
+            Set-Content -LiteralPath (Join-Path $testRoot 'playwright-driver\node.exe') -Value 'test'
+            Set-Content -LiteralPath (Join-Path $testRoot 'playwright-driver\package\cli.js') -Value 'test'
+            Copy-Item -LiteralPath '.\scripts\install-windows-task.ps1' -Destination $installer
+
+            $windowsPowerShell = Join-Path $PSHOME 'powershell.exe'
+            & $windowsPowerShell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer
+            if ($LASTEXITCODE -ne 0) {
+              throw "First installer run failed with exit code $LASTEXITCODE."
+            }
+            & $windowsPowerShell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer
+            if ($LASTEXITCODE -ne 0) {
+              throw "Repeated installer run failed with exit code $LASTEXITCODE."
+            }
+            $scheduledLog = Join-Path $testRoot 'last-scheduled-run.log'
+            if (Test-Path -LiteralPath $scheduledLog) {
+              throw 'Installing the task unexpectedly ran GamerCatch immediately.'
+            }
+
+            $tasks = @(Get-ScheduledTask -TaskName $taskName -TaskPath '\')
+            if ($tasks.Count -ne 1) {
+              throw "Expected one idempotent scheduled task, found $($tasks.Count)."
+            }
+            $task = $tasks[0]
+            $info = Get-ScheduledTaskInfo -TaskName $taskName -TaskPath '\'
+            $action = @($task.Actions)[0]
+            $trigger = @($task.Triggers)[0]
+            if ([string]$task.Principal.LogonType -ne 'Interactive' -or
+                [string]$task.Principal.RunLevel -ne 'Limited') {
+              throw 'The task principal is not Interactive and Limited.'
+            }
+            $expectedFileArgument = '-File "{0}" -ScheduledRun' -f $installer
+            if ($action.Execute -ne $windowsPowerShell -or
+                $action.WorkingDirectory -ne $testRoot -or
+                -not $action.Arguments.Contains($expectedFileArgument)) {
+              throw "The task action does not preserve the exact package path: $($action | Out-String)"
+            }
+            $start = [datetime]$trigger.StartBoundary
+            if ($start -le (Get-Date) -or $start.Hour -ne 9 -or $start.Minute -ne 0) {
+              throw "The next trigger is not the next local 09:00: $start"
+            }
+            if (-not $task.Settings.StartWhenAvailable -or
+                -not $task.Settings.WakeToRun -or
+                -not $task.Settings.RunOnlyIfNetworkAvailable -or
+                $task.Settings.DisallowStartIfOnBatteries -or
+                $task.Settings.StopIfGoingOnBatteries -or
+                [string]$task.Settings.MultipleInstances -ne 'IgnoreNew') {
+              throw "The task settings are incomplete: $($task.Settings | Out-String)"
+            }
+            if ($info.NextRunTime -le (Get-Date) -or $info.NextRunTime.Hour -ne 9) {
+              throw "Task Scheduler did not retain the next local 09:00 run: $($info.NextRunTime)"
+            }
+
+            & $windowsPowerShell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $installer -ScheduledRun
+            if ($LASTEXITCODE -ne 7) {
+              throw "Scheduled mode did not preserve the fake executable exit code: $LASTEXITCODE"
+            }
+            $logText = Get-Content -LiteralPath $scheduledLog -Raw -Encoding UTF8
+            if (-not $logText.Contains('scheduled-test') -or
+                -not $logText.Contains('Exit code: 7')) {
+              throw "Scheduled mode did not capture output and exit code: $logText"
+            }
+
+            Remove-Item -LiteralPath $scheduledLog -Force
+            $schedulerStart = Get-Date
+            Start-ScheduledTask -TaskName $taskName -TaskPath '\'
+            $deadline = (Get-Date).AddSeconds(60)
+            do {
+              Start-Sleep -Milliseconds 500
+              $task = Get-ScheduledTask -TaskName $taskName -TaskPath '\'
+              $info = Get-ScheduledTaskInfo -TaskName $taskName -TaskPath '\'
+              $schedulerFinished = (
+                (Test-Path -LiteralPath $scheduledLog) -and
+                $task.State -ne 'Running'
+              )
+            } while (-not $schedulerFinished -and (Get-Date) -lt $deadline)
+
+            if (-not $schedulerFinished) {
+              throw "Task Scheduler did not finish the action within 60 seconds: $($task | Out-String)"
+            }
+            if ($info.LastRunTime -lt $schedulerStart.AddSeconds(-2) -or
+                $info.LastTaskResult -ne 7) {
+              throw "Task Scheduler did not preserve the real action result: $($info | Out-String)"
+            }
+            $schedulerLogText = Get-Content -LiteralPath $scheduledLog -Raw -Encoding UTF8
+            if (-not $schedulerLogText.Contains('scheduled-test') -or
+                -not $schedulerLogText.Contains('Exit code: 7')) {
+              throw "The registered Task Scheduler action did not write the expected log: $schedulerLogText"
+            }
+          }
+          finally {
+            Unregister-ScheduledTask -TaskName $taskName -TaskPath '\' -Confirm:$false -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue
           }
 
   docs-and-scripts:
@@ -80,11 +211,19 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y poppler-utils
           fi
+          test "$(pdfinfo output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf | awk '/^Pages:/ { print $2 }')" = "18"
+          test "$(pdfinfo output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf | awk '/^Pages:/ { print $2 }')" = "19"
           for manual in output/pdf/*.pdf; do
-            test "$(pdfinfo "$manual" | awk '/^Pages:/ { print $2 }')" = "17"
             pdftotext "$manual" - | grep -F "零基礎設定與操作手冊"
             pdftotext "$manual" - | grep -F "service account"
+            pdftotext "$manual" - | grep -F "更換遊戲時要修改與確認什麼"
           done
+          if pdftotext output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf - | grep -F ".ps1"; then
+            echo "macOS manual must not contain Windows PowerShell instructions." >&2
+            exit 1
+          fi
+          pdftotext output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf - | grep -F "每天 09:00 自動抓取"
+          pdftotext output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf - | grep -F "3_安裝每天早上9點自動抓取.cmd"
 
       - name: Reject committed credentials
         run: |

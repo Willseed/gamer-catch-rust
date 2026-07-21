@@ -14,6 +14,9 @@ from pathlib import PurePosixPath
 
 
 CONFIG_FILENAME = "config.toml"
+CREDENTIALS_DIRECTORY = "credentials"
+WINDOWS_SCHEDULER_ENTRY = "3_安裝每天早上9點自動抓取.cmd"
+WINDOWS_SCHEDULER_SCRIPT = "install-windows-task.ps1"
 
 COMMON_REQUIRED = {
     "README.md",
@@ -32,6 +35,7 @@ class PlatformFiles:
     starter: str
     runner: str
     manual: str
+    extra_required: tuple[str, ...] = ()
 
 
 PLATFORM_FILES = {
@@ -48,6 +52,7 @@ PLATFORM_FILES = {
         starter="1_首次設定.cmd",
         runner="2_開始抓取.cmd",
         manual="GamerCatch_零基礎使用手冊_Windows.pdf",
+        extra_required=(WINDOWS_SCHEDULER_ENTRY, WINDOWS_SCHEDULER_SCRIPT),
     ),
 }
 
@@ -132,7 +137,7 @@ def validate_required_files(
         files.starter,
         files.runner,
         "playwright-driver/package/cli.js",
-    }
+    } | set(files.extra_required)
     for required in existence_only:
         read_required(archive, entries, required)
 
@@ -147,6 +152,59 @@ def validate_required_files(
 def validate_manual(data: bytes, name: str) -> None:
     if not data.startswith(b"%PDF-") or b"%%EOF" not in data[-2048:]:
         fail(f"manual is not a complete PDF: {name}")
+
+
+def require_markers(text: str, markers: tuple[str, ...], name: str) -> None:
+    missing = [marker for marker in markers if marker not in text]
+    if missing:
+        fail(f"{name} is missing required scheduler markers: {missing}")
+
+
+def validate_windows_scheduler(
+    archive: zipfile.ZipFile, entries: list[str]
+) -> None:
+    script_data = read_required(archive, entries, WINDOWS_SCHEDULER_SCRIPT)
+    try:
+        script = script_data.decode("ascii")
+    except UnicodeDecodeError as error:
+        fail(f"{WINDOWS_SCHEDULER_SCRIPT} must remain ASCII-only: {error}")
+
+    require_markers(
+        script,
+        (
+            "-ScheduledRun",
+            "New-ScheduledTaskTrigger -Daily",
+            "-LogonType Interactive",
+            "-RunLevel Limited",
+            "-StartWhenAvailable",
+            "-WakeToRun",
+            "-RunOnlyIfNetworkAvailable",
+            "-AllowStartIfOnBatteries",
+            "-DontStopIfGoingOnBatteries",
+            "-MultipleInstances IgnoreNew",
+            "Register-ScheduledTask",
+            "last-scheduled-run.log",
+        ),
+        WINDOWS_SCHEDULER_SCRIPT,
+    )
+    forbidden = re.compile(
+        r"(?:-RunLevel\s+Highest|-Verb\s+RunAs|Set-ExecutionPolicy)",
+        re.IGNORECASE,
+    )
+    match = forbidden.search(script)
+    if match:
+        fail(f"unsafe scheduler privilege or policy setting: {match.group(0)!r}")
+
+    entry_data = read_required(archive, entries, WINDOWS_SCHEDULER_ENTRY)
+    try:
+        entry = entry_data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        fail(f"{WINDOWS_SCHEDULER_ENTRY} is not UTF-8: {error}")
+    require_markers(
+        entry,
+        (WINDOWS_SCHEDULER_SCRIPT, "-ExecutionPolicy Bypass"),
+        WINDOWS_SCHEDULER_ENTRY,
+    )
 
 
 def validate_binary_format(
@@ -178,14 +236,25 @@ def validate_macos_executable_modes(
             fail(f"macOS release entry is not executable: {required}")
 
 
-def validate_no_credentials(entries: list[str]) -> None:
+def validate_empty_credentials_directory(
+    archive: zipfile.ZipFile, entries: list[str]
+) -> None:
+    root = PurePosixPath(entries[0]).parts[0]
+    directory_name = f"{root}/{CREDENTIALS_DIRECTORY}/"
+    try:
+        directory = archive.getinfo(directory_name)
+    except KeyError:
+        fail(f"release ZIP is missing the empty {CREDENTIALS_DIRECTORY}/ directory")
+    if not directory.is_dir():
+        fail(f"release ZIP entry is not a directory: {directory_name}")
+
     credential_files = [
-        entry
-        for entry in entries
-        if "/credentials/" in f"/{entry}" and entry.lower().endswith(".json")
+        info.filename
+        for info in archive.infolist()
+        if info.filename.startswith(directory_name) and not info.is_dir()
     ]
     if credential_files:
-        fail(f"release ZIP must not contain credential JSON files: {credential_files}")
+        fail(f"release ZIP credentials directory must be empty: {credential_files}")
 
 
 def validate_archive(path: str, platform: str) -> None:
@@ -198,7 +267,9 @@ def validate_archive(path: str, platform: str) -> None:
         validate_binary_format(executable_data, driver_data, platform)
         if platform == "macos":
             validate_macos_executable_modes(archive, entries, files)
-        validate_no_credentials(entries)
+        else:
+            validate_windows_scheduler(archive, entries)
+        validate_empty_credentials_directory(archive, entries)
 
     print(f"validated {platform} package: {path}")
 

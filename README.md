@@ -8,9 +8,9 @@
 
 到 [GitHub Releases](https://github.com/Willseed/gamer-catch-rust/releases) 下載符合平台的 ZIP，並完整解壓縮。不要直接在 ZIP 裡執行。repository 目前是 Public，任何人都能下載，因此請勿把填入帳號資訊的設定檔或 JSON 金鑰重新上傳。
 
-目前 `v0.1.0` 只提供 Apple Silicon Mac（arm64）與一般 Intel／AMD Windows（x64）。Intel Mac 與 Windows on ARM 暫不支援。
+目前 `v0.1.1` 只提供 Apple Silicon Mac（arm64）與一般 Intel／AMD Windows（x64）。Intel Mac 與 Windows on ARM 暫不支援。
 
-發行包內含對應平台的 17 頁圖文手冊；原始檔也可直接查看：
+發行包內含圖文手冊（macOS 18 頁、Windows 19 頁）；原始檔也可直接查看：
 
 - [macOS 零基礎使用手冊](output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf)
 - [Windows 零基礎使用手冊](output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf)
@@ -37,6 +37,18 @@
 
 視窗會保留成功或錯誤訊息，不會執行完立即消失，並將結果存到同一資料夾的 `last-run.log`。確認每個遊戲的排行、人氣都正確後，才將對應區塊的 `write_to_google_sheets` 改成 `true`。
 
+### Windows 每天上午 9 點自動執行（選用）
+
+先完成手動測試及正式寫入驗證，再雙擊 `3_安裝每天早上9點自動抓取.cmd`。它會呼叫隨附的 `install-windows-task.ps1`，以目前 Windows 帳號和標準權限建立每日 Task；不需要管理員權限、密碼或 UAC，也不會永久修改 PowerShell 執行原則。
+
+- 每天 09:00 是 Windows 本機時間；每個遊戲寫入哪一天仍依自己的 `timezone`。
+- 一個 Task 會處理 `config.toml` 內所有 `enabled = true` 的遊戲，以及各自的 service account JSON 和 Google Sheet。
+- 目前 Windows 帳號必須保持登入；鎖定畫面可以執行，登出或完全關機時不能在 09:00 執行。錯過後會在再次登入且電腦、網路可用時補跑；睡眠喚醒仍取決於硬體及電源設定。
+- 自動執行結果寫入 `last-scheduled-run.log`。排程不會繞過巴哈 CAPTCHA。
+- 排程仍遵守 `[bahamut]` 的 `headless`：`false` 會在 09:00 開啟 Chromium；手動驗證完成後可改成 `true` 在背景執行，但遇到安全驗證時仍需改回 `false` 手動處理。
+- Task 會記住資料夾的絕對路徑。移動、改名或升級到新資料夾後，請在新位置再雙擊一次安裝器；重複安裝會更新同一個 Task。
+- 若公司政策封鎖 PowerShell 或 Task Scheduler，請聯絡 IT；不要停用安全軟體、改成 `Unrestricted` 或使用管理員權限強行繞過。
+
 ## 多遊戲、多帳號設定
 
 範例設定在 [config.example.toml](config.example.toml)。一個 `[[games]]` 區塊代表：
@@ -62,6 +74,19 @@
 可以設定一個、三個或更多遊戲，上限 20 個。若同一款遊戲要寫給不同人的試算表，可建立兩個相同 `game_name` 的區塊，各自填不同憑證與試算表。
 
 程式會先驗證所有啟用設定，再開啟巴哈。掃描每個 `page=n` 時只讀取一次頁面，並同時尋找所有尚未找到的遊戲。某個遊戲找不到或某個人的 Sheets 更新失敗時，其他已找到的遊戲仍會繼續處理，最後再彙整失敗項目。
+
+### 更換遊戲時要修改與確認什麼
+
+不需要重裝程式。先備份可用的 `config.toml`，再修改要更換的 `[[games]]` 區塊：
+
+1. 先把該區塊的 `write_to_google_sheets` 改成 `false`。
+2. 將 `game_name` 改成巴哈排行卡片上的完整名稱；若超出目前搜尋範圍，再逐步提高 `[bahamut]` 的 `end_page`。
+3. 換試算表時修改 `spreadsheet_id`、`worksheet_name`、日期列起點與日期／排行／人氣欄位。
+4. 換擁有者或 Google 帳號時修改 `service_account_key_path`，並把新試算表分享給該 JSON 的 `client_email`。
+5. 確認新試算表已有今天日期，再手動執行一次，核對遊戲名稱、排行、人氣與 `page`；此時應維持不寫入。
+6. 測試正確後，只把新遊戲的 `write_to_google_sheets` 改回 `true`，再核對寫入的試算表、分頁、日期列與欄位。不再使用的舊區塊應設為 `enabled = false`。
+
+Windows 每日 Task 每次都會重新讀取同一份 `config.toml`，因此只換遊戲設定不必重裝排程；只有資料夾路徑改變時才需重裝。
 
 ## Google Sheets API 設定
 
@@ -152,7 +177,7 @@ Windows PowerShell：
 .\scripts\package-windows.ps1
 ```
 
-輸出：`dist\GamerCatch-Windows-x64.zip` 或 `-arm64.zip`，使用兩個 `.cmd` 腳本。
+輸出：`dist\GamerCatch-Windows-x64.zip` 或 `-arm64.zip`，使用三個 `.cmd` 腳本；其中第 3 個會呼叫內附的 `install-windows-task.ps1` 安裝每日排程。
 
 發行資料夾包含安全範例 `config.toml`、平台 PDF 手冊、雙擊啟動器、Playwright driver 與 Node，但絕不包含任何真實 JSON 私鑰。Chromium 由雙擊啟動器在第一次使用時安裝到該電腦的使用者快取。
 
@@ -191,7 +216,7 @@ $env:WINDOWS_TIMESTAMP_URL = "CA 提供的 RFC 3161 URL"
 
 未設定 Windows 簽章時封裝會停止。只有明確製作未簽預覽版時，才可先設定 `$env:ALLOW_UNSIGNED_WINDOWS = "1"`；GitHub Release 會清楚標示預覽版的簽章狀態。
 
-目前 `v0.1.0` Release 是未簽章預覽版：本機 Keychain 尚未提供可用的 Developer ID Application 私鑰，Windows 也尚未申請 Authenticode 憑證。請只從本 repository 的 Release 下載並核對 `SHA256SUMS.txt`，不要關閉作業系統安全功能。
+目前 `v0.1.1` Release 是未簽章預覽版：本機 Keychain 尚未提供可用的 Developer ID Application 私鑰，Windows 也尚未申請 Authenticode 憑證。請只從本 repository 的 Release 下載並核對 `SHA256SUMS.txt`，不要關閉作業系統安全功能。
 
 ## 開發驗證
 
@@ -211,5 +236,6 @@ cargo clippy --locked --all-targets -- -D warnings
 - service account JSON 錯誤：確認該遊戲指向自己的 JSON，且檔案位於設定的路徑。
 - Google 403：通常是 API 未啟用，或該 Sheet 未分享給對應 JSON 的 `client_email`。
 - 輸出欄位重疊：同一試算表、同一工作表不能讓兩個遊戲寫入相同排行／人氣欄。
+- Windows 排程未執行：確認目前帳號仍登入、Task 未停用，以及電腦、網路與喚醒設定可用；再查看 `last-scheduled-run.log`。
 
 排行與人氣是掃描當下的快照。請低頻率執行、不要平行大量抓取，並自行確認及遵守巴哈姆特的服務條款與 robots 規則。

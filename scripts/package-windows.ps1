@@ -141,6 +141,8 @@ Copy-Item -LiteralPath (Join-Path $ProjectDir "使用說明.txt") -Destination $
 Copy-Item -LiteralPath $ManualPath -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\1_首次設定.cmd") -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\2_開始抓取.cmd") -Destination $OutputDir
+Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\3_安裝每天早上9點自動抓取.cmd") -Destination $OutputDir
+Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\install-windows-task.ps1") -Destination $OutputDir
 New-Item -ItemType Directory -Path (Join-Path $OutputDir "credentials") | Out-Null
 $BundledDriver = Join-Path $OutputDir "playwright-driver"
 Copy-Item -LiteralPath $DriverDir -Destination $BundledDriver -Recurse
@@ -190,4 +192,4 @@ if (-not (Test-Path -LiteralPath $OutputZip -PathType Leaf)) {
 }
 
 Write-Host "Windows package created: $OutputZip"
-Write-Host "Double-click 1_首次設定.cmd, then 2_開始抓取.cmd."
+Write-Host "After setup and a successful manual run, use the third CMD file to install the optional daily task."

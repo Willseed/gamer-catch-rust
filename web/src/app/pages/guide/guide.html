@@ -1,0 +1,1594 @@
+<main id="main-content" class="guide-page">
+  <header class="hero" aria-labelledby="guide-title">
+    <div class="hero__content">
+      <p class="eyebrow">GamerCatch 使用指南</p>
+      <h1 id="guide-title">不會寫程式，也能完成每日排行抓取</h1>
+      <p class="hero__lead">
+        從下載、Google Sheets、Gmail 通知到 Windows 每日排程，照順序操作即可。
+        同一份設定可以處理多個遊戲，也能連到不同人的 Google 試算表。
+      </p>
+      <div class="hero__notice" role="note">
+        <strong>這個網站不收憑證。</strong>
+        請勿上傳 service account JSON、Gmail OAuth JSON、private key、client secret 或 refresh
+        token。設定產生器只需要檔名與相對路徑。
+      </div>
+      <ol class="hero__steps" aria-label="四個主要步驟">
+        <li><span>1</span>下載並解壓縮</li>
+        <li><span>2</span>建立 Google 憑證</li>
+        <li><span>3</span>產生 config.toml</li>
+        <li><span>4</span>先測試再正式寫入</li>
+      </ol>
+    </div>
+  </header>
+
+  <div class="guide-layout">
+    <aside class="contents" aria-labelledby="contents-title">
+      <h2 id="contents-title">章節目錄</h2>
+      <p>網址中的 <code>#章節</code> 可以直接帶您跳到指定說明。</p>
+      <nav aria-label="操作手冊章節">
+        <ol>
+          @for (section of sections; track section.id; let number = $index) {
+            <li>
+              <a [href]="'#' + section.id">
+                <span>{{ number + 1 }}</span
+                >{{ section.label }}
+              </a>
+            </li>
+          }
+        </ol>
+      </nav>
+    </aside>
+
+    <article class="manual" aria-label="GamerCatch 零基礎操作手冊">
+      <section id="download" class="guide-section" aria-labelledby="download-title">
+        <span id="system-requirements" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">01</span>
+            <h2 id="download-title">下載正確版本並完整解壓縮</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="download"
+            (click)="copySectionLink('download')"
+            aria-label="複製下載與完整解壓縮章節連結"
+          >
+            @if (copiedSection() === 'download') {
+              已複製
+            } @else if (copyFailedSection() === 'download') {
+              無法複製
+            } @else {
+              #download
+            }
+          </button>
+        </div>
+
+        <p class="lead">
+          最常見的失敗原因，就是直接在 ZIP 裡執行，或只把其中一個檔案拖出來。
+          請先確認電腦類型，再下載對應版本。
+        </p>
+
+        <div class="platform-grid">
+          <section class="platform-card" aria-labelledby="mac-download-title">
+            <p class="platform-label">macOS</p>
+            <h3 id="mac-download-title">Apple Silicon</h3>
+            <ol class="steps">
+              <li>
+                點左上角蘋果選單，再點「關於這台 Mac」。本版支援 Apple M1、M2、M3、M4 等 Apple
+                Silicon；Intel Mac 暫不支援。
+              </li>
+              <li>
+                下載
+                <a
+                  href="https://github.com/Willseed/gamer-catch-rust/releases/latest/download/GamerCatch-macOS-arm64.zip"
+                  >GamerCatch-macOS-arm64.zip</a
+                >。
+              </li>
+              <li>雙擊 ZIP，把完整的 GamerCatch 資料夾移到「文件」等固定位置。</li>
+              <li>
+                確認資料夾內有 GamerCatch、三個 <code>.command</code>、
+                <code>config.toml</code>、<code>credentials</code> 與
+                <code>playwright-driver</code>。
+              </li>
+            </ol>
+          </section>
+
+          <section class="platform-card" aria-labelledby="windows-download-title">
+            <p class="platform-label">Windows</p>
+            <h3 id="windows-download-title">Intel / AMD x64</h3>
+            <ol class="steps">
+              <li>
+                開啟「設定」→「系統」→「關於」。本版支援一般 Intel 或 AMD 的 x64 電腦；Windows on
+                ARM 暫不支援。
+              </li>
+              <li>
+                下載
+                <a
+                  href="https://github.com/Willseed/gamer-catch-rust/releases/latest/download/GamerCatch-Windows-x64.zip"
+                  >GamerCatch-Windows-x64.zip</a
+                >。
+              </li>
+              <li>在 ZIP 上按右鍵，選「全部解壓縮」，再進入新資料夾操作。</li>
+              <li>
+                確認資料夾內有 GamerCatch.exe、四個 <code>.cmd</code>、
+                <code>install-windows-task.ps1</code>、<code>config.toml</code>、
+                <code>credentials</code> 與 <code>playwright-driver</code>。
+              </li>
+            </ol>
+          </section>
+        </div>
+
+        <div class="callout callout--danger" role="alert">
+          <strong>不要拆散資料夾</strong>
+          主程式、雙擊腳本與 playwright-driver 必須放在一起。也不要直接從壓縮檔預覽視窗執行。
+        </div>
+      </section>
+
+      <section id="system-safety" class="guide-section" aria-labelledby="system-safety-title">
+        <span id="quick-start" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">02</span>
+            <h2 id="system-safety-title">第一次雙擊與系統安全提示</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="system-safety"
+            (click)="copySectionLink('system-safety')"
+            aria-label="複製系統安全提示章節連結"
+          >
+            @if (copiedSection() === 'system-safety') {
+              已複製
+            } @else if (copyFailedSection() === 'system-safety') {
+              無法複製
+            } @else {
+              #system-safety
+            }
+          </button>
+        </div>
+
+        <div class="callout callout--warning" role="note">
+          <strong>只從官方 GitHub Release 下載</strong>
+          先核對 repository 是 <code>Willseed/gamer-catch-rust</code>，並依
+          <a href="#checksum">SHA-256 章節</a>核對檔案。不要關閉 Gatekeeper、SmartScreen
+          或防毒軟體。
+        </div>
+
+        <h3>第一次設定</h3>
+        <ol class="steps">
+          <li>
+            macOS 雙擊 <code>1_首次設定.command</code>；Windows 雙擊
+            <code>1_首次設定.cmd</code>。第一次會準備 Chromium，可能需要數分鐘。
+          </li>
+          <li>保持網路連線與黑色視窗開啟，直到顯示完成。</li>
+          <li>
+            完成後會協助您找到 <code>config.toml</code>、<code>credentials</code>
+            資料夾與這份線上指南。
+          </li>
+        </ol>
+
+        <div class="platform-grid">
+          <section class="platform-card">
+            <span id="first-setup-macos" class="anchor-alias" aria-hidden="true"></span>
+            <p class="platform-label">macOS</p>
+            <h3>Gatekeeper 阻擋時</h3>
+            <p>
+              目前預覽版尚未使用 Developer ID 簽章與 Apple 公證。核對來源後，按住 Control
+              點擊腳本並選「打開」；若仍被阻擋，到「系統設定」→「隱私權與安全性」選「仍要打開」。
+            </p>
+            <p>
+              不要執行來路不明的 <code>xattr</code>、<code>spctl</code> 指令，也不要停用
+              Gatekeeper。
+            </p>
+          </section>
+          <section class="platform-card">
+            <span id="first-setup-windows" class="anchor-alias" aria-hidden="true"></span>
+            <p class="platform-label">Windows</p>
+            <h3>SmartScreen 警告時</h3>
+            <p>
+              目前預覽版尚未簽章，可能顯示「未知的發行者」。只有檔案來源與雜湊都正確時，才考慮「其他資訊」→「仍要執行」。
+            </p>
+            <p>公司電腦若禁止執行，請交由 IT 管理員確認，不要停用 Windows 安全性。</p>
+          </section>
+        </div>
+      </section>
+
+      <section
+        id="multiple-games-accounts"
+        class="guide-section"
+        aria-labelledby="multiple-games-accounts-title"
+      >
+        <span id="multiple-games-and-accounts" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">03</span>
+            <h2 id="multiple-games-accounts-title">開始前：整理多遊戲與多人帳號</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="multiple-games-accounts"
+            (click)="copySectionLink('multiple-games-accounts')"
+            aria-label="複製多遊戲與多人帳號章節連結"
+          >
+            @if (copiedSection() === 'multiple-games-accounts') {
+              已複製
+            } @else if (copyFailedSection() === 'multiple-games-accounts') {
+              無法複製
+            } @else {
+              #multiple-games-accounts
+            }
+          </button>
+        </div>
+
+        <p class="lead">
+          每個遊戲可以屬於不同的人、不同 Google 帳號、不同 Cloud 專案、不同 JSON
+          與不同試算表，完全不需要共用帳號。先填一個也可以，其餘遊戲暫時停用。
+        </p>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="多人多遊戲準備表">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">編號</th>
+                <th scope="col">遊戲名稱</th>
+                <th scope="col">試算表擁有者</th>
+                <th scope="col">分頁</th>
+                <th scope="col">JSON 檔名</th>
+                <th scope="col">欄位</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">1</th>
+                <td>夜鴉</td>
+                <td>第一位使用者</td>
+                <td>每日排名</td>
+                <td><code>person-1-service-account.json</code></td>
+                <td>A / B / C</td>
+              </tr>
+              <tr>
+                <th scope="row">2</th>
+                <td>第二個完整名稱</td>
+                <td>第二位使用者</td>
+                <td>每日排名</td>
+                <td><code>person-2-service-account.json</code></td>
+                <td>A / B / C</td>
+              </tr>
+              <tr>
+                <th scope="row">3</th>
+                <td>第三個完整名稱</td>
+                <td>第三位使用者</td>
+                <td>每日排名</td>
+                <td><code>person-3-service-account.json</code></td>
+                <td>A / B / C</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>每個遊戲要先準備五樣資料</h3>
+        <ul class="check-list">
+          <li>巴哈排行卡片顯示的完整遊戲名稱，包含空格、全形符號與系列名稱。</li>
+          <li>Google 試算表完整網址。</li>
+          <li>試算表底部的工作表分頁名稱，例如「每日排名」。</li>
+          <li>日期、排行、人氣所在欄位，例如 A、B、C。</li>
+          <li>該遊戲使用的 service account JSON；三個遊戲可以使用三份不同 JSON。</li>
+        </ul>
+
+        <div class="callout callout--info" role="note">
+          <strong>還沒有 JSON 沒關係</strong>
+          先記住「每個遊戲都要指向自己使用的 JSON」。接著依
+          <a href="#google-sheets-api">第 5 章啟用 Sheets API</a>，再到
+          <a href="#service-account">第 6 章建立並下載 service account JSON</a>；不需要現在就會。
+        </div>
+
+        <div class="callout callout--success" role="note">
+          <strong>同一款遊戲也能交給不同人</strong>
+          建立兩個相同 <code>game_name</code> 的遊戲項目，分別連到不同試算表、JSON
+          與通知收件人即可。程式會共用抓到的結果，再分別寫入。
+        </div>
+      </section>
+
+      <section id="prepare-sheets" class="guide-section" aria-labelledby="prepare-sheets-title">
+        <span id="prepare-google-sheet" class="anchor-alias" aria-hidden="true"></span>
+        <span id="worksheet-date-rules" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">04</span>
+            <h2 id="prepare-sheets-title">準備每一張 Google 試算表</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="prepare-sheets"
+            (click)="copySectionLink('prepare-sheets')"
+            aria-label="複製準備 Google 試算表章節連結"
+          >
+            @if (copiedSection() === 'prepare-sheets') {
+              已複製
+            } @else if (copyFailedSection() === 'prepare-sheets') {
+              無法複製
+            } @else {
+              #prepare-sheets
+            }
+          </button>
+        </div>
+
+        <p>程式只尋找已經存在的今天，不會自行新增日期列。建議每張試算表先建立以下欄位。</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="試算表欄位範例">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">A 欄</th>
+                <th scope="col">B 欄</th>
+                <th scope="col">C 欄</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>日期</td>
+                <td>排行</td>
+                <td>人氣</td>
+              </tr>
+              <tr>
+                <td>2026/7/21</td>
+                <td>由程式寫入</td>
+                <td>由程式寫入</td>
+              </tr>
+              <tr>
+                <td>2026/7/22</td>
+                <td>由程式寫入</td>
+                <td>由程式寫入</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ol class="steps">
+          <li>
+            在 A2 之後輸入包含年份的真正日期，例如
+            2026/7/21。不要加單引號，也不要只放沒有年份的純文字。
+          </li>
+          <li>確認底部分頁名稱；之後的 <code>worksheet_name</code> 必須逐字相同。</li>
+          <li>今天只能出現一次，否則程式無法判斷應寫入哪一列。</li>
+          <li>執行期間不要排序、插入或刪除資料列。</li>
+        </ol>
+      </section>
+
+      <section
+        id="google-sheets-api"
+        class="guide-section"
+        aria-labelledby="google-sheets-api-title"
+      >
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">05</span>
+            <h2 id="google-sheets-api-title">啟用 Google Sheets API</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="google-sheets-api"
+            (click)="copySectionLink('google-sheets-api')"
+            aria-label="複製啟用 Google Sheets API 章節連結"
+          >
+            @if (copiedSection() === 'google-sheets-api') {
+              已複製
+            } @else if (copyFailedSection() === 'google-sheets-api') {
+              無法複製
+            } @else {
+              #google-sheets-api
+            }
+          </button>
+        </div>
+
+        <p class="lead">
+          每位試算表使用者都可以用自己的 Google 帳號與 Cloud 專案完成，不需共用同一個管理者帳號。
+        </p>
+        <ol class="steps">
+          <li>
+            使用該張試算表管理者的 Google 帳號登入
+            <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer"
+              >Google Cloud Console</a
+            >。
+          </li>
+          <li>從上方專案選單建立或選擇專案，例如「GamerCatch-夜鴉」。</li>
+          <li>左上角選單 →「API 和服務」→「程式庫」。</li>
+          <li>搜尋「Google Sheets API」，進入結果後按「啟用」。建立 API key 並不等於完成。</li>
+        </ol>
+        <div class="callout callout--info" role="note">
+          <strong>Sheets 與 Gmail 是兩套不同憑證</strong>
+          Sheets 使用 service account；Gmail 使用寄件者本人同意的 Desktop OAuth。兩份 JSON
+          不能互相替代。
+        </div>
+      </section>
+
+      <section id="service-account" class="guide-section" aria-labelledby="service-account-title">
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">06</span>
+            <h2 id="service-account-title">建立 Sheets service account 並下載 JSON</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="service-account"
+            (click)="copySectionLink('service-account')"
+            aria-label="複製建立 service account 章節連結"
+          >
+            @if (copiedSection() === 'service-account') {
+              已複製
+            } @else if (copyFailedSection() === 'service-account') {
+              無法複製
+            } @else {
+              #service-account
+            }
+          </button>
+        </div>
+
+        <ol class="steps">
+          <li>Google Cloud 左上角選單 →「IAM 與管理」→「服務帳戶」→「建立服務帳戶」。</li>
+          <li>取一個容易辨認的名稱，例如 <code>gamercatch-nightcrow</code>。</li>
+          <li>
+            不需要授予 Cloud 專案 Owner 或
+            Editor；若畫面允許，略過角色直接完成。試算表權限會在下一章單獨分享。
+          </li>
+          <li>
+            點進新帳戶 →「金鑰」→「新增金鑰」→「建立新的金鑰」→選 JSON →「建立」。瀏覽器會下載一份
+            <code>.json</code>。
+          </li>
+        </ol>
+        <div class="callout callout--danger" role="alert">
+          <strong>JSON 就是程式專用密碼</strong>
+          私鑰無法再次下載。不要上傳 GitHub、雲端公開連結、群組聊天室或問題回報附件。若外洩，立刻到
+          Google Cloud 刪除舊金鑰並建立新的。
+        </div>
+        <div class="callout callout--warning" role="note">
+          <strong>公司或學校禁止建立金鑰？</strong>
+          這通常是組織安全政策，不是程式故障。請聯絡 Google 管理員，不要嘗試繞過政策。
+        </div>
+      </section>
+
+      <section id="share-sheets" class="guide-section" aria-labelledby="share-sheets-title">
+        <span id="share-google-sheet" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">07</span>
+            <h2 id="share-sheets-title">把試算表分享給正確的 service account</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="share-sheets"
+            (click)="copySectionLink('share-sheets')"
+            aria-label="複製分享試算表章節連結"
+          >
+            @if (copiedSection() === 'share-sheets') {
+              已複製
+            } @else if (copyFailedSection() === 'share-sheets') {
+              無法複製
+            } @else {
+              #share-sheets
+            }
+          </button>
+        </div>
+
+        <p>
+          您本人能開啟試算表，不代表程式有權限。service account 是另一個機器帳號，必須單獨分享。
+        </p>
+        <ol class="steps">
+          <li>用 TextEdit 或記事本在自己的電腦開啟 JSON，尋找 <code>client_email</code>。</li>
+          <li>只複製引號內的電子郵件；不要把整份 JSON 貼到網站或聊天室。</li>
+          <li>
+            開啟正確的 Google Sheet，按「共用」，貼上地址並選「編輯者」。service account
+            沒有收件匣，可以取消寄送通知。
+          </li>
+          <li>逐一核對：第一張表對第一份 JSON，第二張表對第二份 JSON，依此類推。</li>
+        </ol>
+        <pre><code>"client_email": "gamercatch-nightcrow&#64;example-project.iam.gserviceaccount.com"</code></pre>
+        <div class="callout callout--success" role="note">
+          <strong>只分享特定試算表即可</strong>
+          不需要把整個 Google Drive 公開，也不需要把 service account 設成網域管理員。
+        </div>
+      </section>
+
+      <section id="credentials" class="guide-section" aria-labelledby="credentials-title">
+        <span id="credentials-folder" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">08</span>
+            <h2 id="credentials-title">把 JSON 放進 credentials 資料夾</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="credentials"
+            (click)="copySectionLink('credentials')"
+            aria-label="複製放置 JSON 憑證章節連結"
+          >
+            @if (copiedSection() === 'credentials') {
+              已複製
+            } @else if (copyFailedSection() === 'credentials') {
+              無法複製
+            } @else {
+              #credentials
+            }
+          </button>
+        </div>
+
+        <ol class="steps">
+          <li>
+            建議依序改名為 <code>person-1-service-account.json</code>、
+            <code>person-2-service-account.json</code>、
+            <code>person-3-service-account.json</code>。
+          </li>
+          <li>把檔案拖進 GamerCatch 的 <code>credentials</code> 資料夾。</li>
+          <li>
+            Windows 建議開啟「檢視」→「顯示」→「副檔名」，避免實際檔名變成
+            <code>.json.json</code>。
+          </li>
+        </ol>
+        <pre><code>GamerCatch 資料夾/
+  config.toml
+  credentials/
+    person-1-service-account.json
+    person-2-service-account.json
+    person-3-service-account.json
+    gmail-oauth-client.json    # 啟用 Gmail 時才需要</code></pre>
+        <div class="callout callout--danger" role="alert">
+          <strong>不要把自己的檔案重新壓回公開 ZIP</strong>
+          官方下載包的 credentials 是空資料夾。您的 JSON
+          只應留在自己的電腦，也絕對不要上傳到本網站。 Gmail refresh token
+          會存入系統安全儲存區，不會放在這個資料夾。
+        </div>
+      </section>
+
+      <section id="gmail-oauth" class="guide-section" aria-labelledby="gmail-oauth-title">
+        <span id="gmail-api" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">09</span>
+            <h2 id="gmail-oauth-title">Gmail：建立專用 Desktop OAuth 憑證</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="gmail-oauth"
+            (click)="copySectionLink('gmail-oauth')"
+            aria-label="複製建立 Gmail OAuth 章節連結"
+          >
+            @if (copiedSection() === 'gmail-oauth') {
+              已複製
+            } @else if (copyFailedSection() === 'gmail-oauth') {
+              無法複製
+            } @else {
+              #gmail-oauth
+            }
+          </button>
+        </div>
+
+        <p class="lead">
+          Gmail 通知是選用功能。只有希望在排行或人氣抓取異常時收到信，才需要完成本章；不用時保持
+          <code>gmail_notifications.enabled = false</code>。
+        </p>
+        <div class="callout callout--warning" role="note">
+          <strong>不能沿用 Sheets 的 JSON</strong>
+          Gmail 使用寄件者本人同意的 OAuth 2.0；Sheets service account、API key 或 Web client
+          都不能代替 Desktop app OAuth。
+        </div>
+        <ol class="steps">
+          <li>
+            以預定的寄件 Gmail 登入 Google Cloud Console，建立或選擇專案；到「API
+            和服務」→「程式庫」啟用 Gmail API。
+          </li>
+          <li>
+            設定 Google Auth Platform 的應用程式名稱與支援信箱。Workspace 組織內可依政策選
+            Internal；一般個人 Gmail 選 External，Testing 時把寄件帳號加入 Test users。
+          </li>
+          <li>
+            到 Data Access 只加入
+            <code>https://www.googleapis.com/auth/gmail.send</code>，不要加入讀信或完整信箱權限。
+          </li>
+          <li>
+            到 Clients 建立 OAuth client，Application type 必須是 Desktop
+            app（電腦版應用程式）。下載後改名為
+            <code>gmail-oauth-client.json</code>。
+          </li>
+        </ol>
+        <div class="callout callout--danger" role="alert">
+          <strong>External Testing 通常只有 7 天</strong>
+          <code>gmail.send</code> 授權與 refresh token 通常會在 7
+          天後失效，不適合長期每日排程。長期使用請依帳號情況採 Internal，或切換 In production 並完成
+          Google 要求的設定或驗證。
+        </div>
+      </section>
+
+      <section
+        id="gmail-authorization"
+        class="guide-section"
+        aria-labelledby="gmail-authorization-title"
+      >
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">10</span>
+            <h2 id="gmail-authorization-title">Gmail：填收件人並完成首次授權</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="gmail-authorization"
+            (click)="copySectionLink('gmail-authorization')"
+            aria-label="複製 Gmail 首次授權章節連結"
+          >
+            @if (copiedSection() === 'gmail-authorization') {
+              已複製
+            } @else if (copyFailedSection() === 'gmail-authorization') {
+              無法複製
+            } @else {
+              #gmail-authorization
+            }
+          </button>
+        </div>
+
+        <p>
+          一份設定支援一個寄件 Gmail
+          與多位收件人。授權只在第一次、權限失效、換寄件人或換系統使用者時操作；平常抓取不會開
+          Google 登入頁。
+        </p>
+        <pre><code>[gmail_notifications]
+enabled = true
+sender_email = "alerts&#64;gmail.com"
+default_recipients = ["owner&#64;example.com", "backup&#64;example.com"]
+oauth_client_secret_path = "credentials/gmail-oauth-client.json"
+subject_prefix = "[GamerCatch]"
+
+[[games]]
+notification_recipients = []
+
+[[games]]
+notification_recipients = ["person-2&#64;example.com"]</code></pre>
+        <ol class="steps">
+          <li>把 OAuth JSON 放入 credentials，並在設定產生器填入它的相對路徑。</li>
+          <li>
+            核對 <code>sender_email</code> 和稍後登入的 Gmail
+            相同。遊戲收件人留空時使用全域預設；填入時會取代全域預設。
+          </li>
+          <li>
+            macOS 雙擊 <code>Gmail_首次授權.command</code>；Windows 雙擊
+            <code>Gmail_首次授權.cmd</code>。登入寄件帳號並同意 <code>gmail.send</code>，5
+            分鐘內完成。
+          </li>
+          <li>
+            確認每位有效收件人都收到測試信。結果會寫入
+            <code>last-gmail-authorization.log</code>。
+          </li>
+        </ol>
+        <div class="callout callout--info" role="note">
+          <strong>每個電腦登入帳號都要各自授權</strong>
+          refresh token 只存於目前使用者的 macOS Keychain 或 Windows Credential Manager，不會跟著
+          ZIP 或 config.toml
+          複製。換電腦、換使用者、換寄件人、撤銷權限或授權到期，都要重新執行首次授權。
+        </div>
+      </section>
+
+      <section
+        id="gmail-notifications"
+        class="guide-section"
+        aria-labelledby="gmail-notifications-title"
+      >
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">11</span>
+            <h2 id="gmail-notifications-title">Gmail：通知範圍與常見錯誤</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="gmail-notifications"
+            (click)="copySectionLink('gmail-notifications')"
+            aria-label="複製 Gmail 通知規則章節連結"
+          >
+            @if (copiedSection() === 'gmail-notifications') {
+              已複製
+            } @else if (copyFailedSection() === 'gmail-notifications') {
+              無法複製
+            } @else {
+              #gmail-notifications
+            }
+          </button>
+        </div>
+
+        <p>每位收件人在一次執行中最多收到一封彙整信，而且只包含他負責的遊戲。</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Gmail 通知收件規則">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">情況</th>
+                <th scope="col">收件規則</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">遊戲收件人為空</th>
+                <td>使用全域 default_recipients。</td>
+              </tr>
+              <tr>
+                <th scope="row">遊戲有專用地址</th>
+                <td>取代全域地址，只通知該遊戲的 notification_recipients。</td>
+              </tr>
+              <tr>
+                <th scope="row">同一人負責多個遊戲</th>
+                <td>地址會去重，失敗項目合併成一封。</td>
+              </tr>
+              <tr>
+                <th scope="row">全部遊戲的共同錯誤</th>
+                <td>通知所有啟用遊戲的有效收件人。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>什麼情況會寄信？</h3>
+        <ul class="check-list">
+          <li>
+            會寄：瀏覽器、網路、HTTP、安全驗證、DOM、排行或人氣解析、找不到遊戲，以及已啟用的 Sheets
+            寫入異常。
+          </li>
+          <li>不會寄：全部成功、強制 dry-run，或刻意設定不寫入 Google Sheets。</li>
+          <li>
+            設定檔壞掉、程式根本沒啟動、整台電腦斷網或 Gmail
+            本身失敗時，信可能寄不出去；仍要查看執行 log。
+          </li>
+          <li>寄信錯誤不會蓋掉原始抓取或寫入錯誤。</li>
+        </ul>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Gmail 常見錯誤">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">看到的問題</th>
+                <th scope="col">處理方式</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">redirect_uri_mismatch</th>
+                <td>重新下載 Desktop app OAuth JSON；Web client 或 service account 都不適用。</td>
+              </tr>
+              <tr>
+                <th scope="row">access_denied</th>
+                <td>External Testing 將寄件帳號加入 Test users；組織政策封鎖時聯絡管理員。</td>
+              </tr>
+              <tr>
+                <th scope="row">找不到授權</th>
+                <td>用相同作業系統帳號重新執行 Gmail 首次授權。</td>
+              </tr>
+              <tr>
+                <th scope="row">本機回呼逾時</th>
+                <td>保持黑色視窗開啟，並在 5 分鐘內完成瀏覽器授權。</td>
+              </tr>
+              <tr>
+                <th scope="row">Gmail API 403</th>
+                <td>確認 API 已啟用且只有 gmail.send；權限更改後撤銷並重新授權。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section
+        id="config-generator"
+        class="guide-section guide-section--blue"
+        aria-labelledby="config-generator-title"
+      >
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">12</span>
+            <h2 id="config-generator-title">使用網頁設定產生器</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="config-generator"
+            (click)="copySectionLink('config-generator')"
+            aria-label="複製設定產生器章節連結"
+          >
+            @if (copiedSection() === 'config-generator') {
+              已複製
+            } @else if (copyFailedSection() === 'config-generator') {
+              無法複製
+            } @else {
+              #config-generator
+            }
+          </button>
+        </div>
+
+        <p class="lead">
+          不需要自己排 TOML 格式。產生器會在瀏覽器內整理欄位，下載可直接使用的
+          <code>config.toml</code>。
+        </p>
+        <a class="primary-action" href="/generator">開啟設定產生器</a>
+        <ol class="steps">
+          <li>先選擇巴哈掃描頁數與是否顯示瀏覽器。一般使用者保留預設即可。</li>
+          <li>
+            按「新增遊戲」，逐一填遊戲名稱、試算表網址、分頁、JSON 相對路徑、日期列與輸出欄位。
+          </li>
+          <li>若要通知，再開啟 Gmail，填寄件地址、收件地址與 OAuth JSON 相對路徑。</li>
+          <li>先讓所有遊戲保持「不寫入 Google Sheets」，再下載 <code>config.toml</code>。</li>
+          <li>
+            備份套件內原本的 <code>config.toml</code>，把新檔放到 GamerCatch 資料夾最外層。Windows
+            要確認檔名沒有變成 <code>config.toml.txt</code>。
+          </li>
+        </ol>
+        <div class="callout callout--danger" role="alert">
+          <strong>產生器永遠不需要讀取 JSON 內容</strong>
+          只填像 <code>credentials/person-1-service-account.json</code>
+          這種路徑文字。不要拖曳、貼上或上傳 JSON、private_key、client_secret 或 refresh token。
+        </div>
+        <div class="callout callout--info" role="note">
+          <strong>多人帳號不是多人登入網站</strong>
+          產生器只建立本機設定檔，不會登入 Google，也不會替您保存帳號。不同使用者的 Sheets
+          權限由各自的 service account JSON 與試算表分享設定決定。
+        </div>
+      </section>
+
+      <section id="config-fields" class="guide-section" aria-labelledby="config-fields-title">
+        <span id="config-reference" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">13</span>
+            <h2 id="config-fields-title">認識產生器與 config.toml 欄位</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="config-fields"
+            (click)="copySectionLink('config-fields')"
+            aria-label="複製認識設定欄位章節連結"
+          >
+            @if (copiedSection() === 'config-fields') {
+              已複製
+            } @else if (copyFailedSection() === 'config-fields') {
+              無法複製
+            } @else {
+              #config-fields
+            }
+          </button>
+        </div>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="設定欄位說明">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">欄位</th>
+                <th scope="col">小白版說明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">enabled</th>
+                <td>開啟才會處理；暫時不用的遊戲保持關閉。</td>
+              </tr>
+              <tr>
+                <th scope="row">game_name</th>
+                <td>巴哈排行卡片上的完整名稱，空格與符號都要相同。</td>
+              </tr>
+              <tr>
+                <th scope="row">write_to_google_sheets</th>
+                <td>第一次保持 false；確認抓取正確後才開啟。</td>
+              </tr>
+              <tr>
+                <th scope="row">spreadsheet_id</th>
+                <td>直接貼完整 Google 試算表網址最簡單。</td>
+              </tr>
+              <tr>
+                <th scope="row">service_account_key_path</th>
+                <td>只填本機相對路徑，不貼 JSON 內容。</td>
+              </tr>
+              <tr>
+                <th scope="row">worksheet_name</th>
+                <td>試算表底部的分頁名稱，不是上方檔案名稱。</td>
+              </tr>
+              <tr>
+                <th scope="row">timezone</th>
+                <td>台灣通常使用 Asia/Taipei。</td>
+              </tr>
+              <tr>
+                <th scope="row">first_data_row</th>
+                <td>第 1 列是標題時填 2。</td>
+              </tr>
+              <tr>
+                <th scope="row">date / rank / popularity column</th>
+                <td>日期、排行、人氣欄，例如 A、B、C。</td>
+              </tr>
+              <tr>
+                <th scope="row">notification_recipients</th>
+                <td>空白時使用 Gmail 全域預設；填入時只通知該遊戲負責人。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>若需要手動編輯 TOML</h3>
+        <ul class="check-list">
+          <li>只修改等號右邊；引號內的文字可以換。</li>
+          <li><code>true</code> / <code>false</code> 必須小寫且不加引號。</li>
+          <li>頁碼與列號是數字，不加引號。</li>
+          <li>
+            多人電子郵件要各自加雙引號並以逗號分開，例如
+            <code>["a&#64;example.com", "b&#64;example.com"]</code>。
+          </li>
+          <li>不要刪除 <code>[[games]]</code>、欄位名稱、等號、雙引號或方括號。</li>
+          <li>建議保留 <code>headless = false</code>，遇到巴哈安全驗證時才看得到瀏覽器。</li>
+          <li>掃描頁數最多 200；頁數越多，執行時間與網站負擔越高。</li>
+        </ul>
+      </section>
+
+      <section
+        id="multiple-game-config"
+        class="guide-section"
+        aria-labelledby="multiple-game-config-title"
+      >
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">14</span>
+            <h2 id="multiple-game-config-title">三個遊戲怎麼設定</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="multiple-game-config"
+            (click)="copySectionLink('multiple-game-config')"
+            aria-label="複製設定多個遊戲章節連結"
+          >
+            @if (copiedSection() === 'multiple-game-config') {
+              已複製
+            } @else if (copyFailedSection() === 'multiple-game-config') {
+              無法複製
+            } @else {
+              #multiple-game-config
+            }
+          </button>
+        </div>
+
+        <p>先完成遊戲 1。遊戲 2、3 使用相同欄位，但換成各自名稱、試算表、JSON 與收件人。</p>
+        <pre><code>[[games]]
+enabled = true
+game_name = "夜鴉"
+write_to_google_sheets = false
+spreadsheet_id = "https://docs.google.com/spreadsheets/d/第一張ID/edit"
+service_account_key_path = "credentials/person-1-service-account.json"
+worksheet_name = "每日排名"
+timezone = "Asia/Taipei"
+first_data_row = 2
+date_column = "A"
+rank_column = "B"
+popularity_column = "C"
+notification_recipients = []</code></pre>
+        <pre><code>[[games]]
+enabled = true
+game_name = "請填巴哈上的第二個完整名稱"
+write_to_google_sheets = false
+spreadsheet_id = "https://docs.google.com/spreadsheets/d/第二張ID/edit"
+service_account_key_path = "credentials/person-2-service-account.json"
+worksheet_name = "每日排名"
+notification_recipients = ["person-2&#64;example.com"]</code></pre>
+        <div class="callout callout--success" role="note">
+          <strong>三張表都用 A / B / C 沒問題</strong>
+          每個遊戲寫到不同試算表時，欄位不會衝突。只有寫入同一張試算表、同一個分頁的不同遊戲，排行與人氣欄位才不能重疊。
+        </div>
+      </section>
+
+      <section id="dry-run" class="guide-section" aria-labelledby="dry-run-title">
+        <span id="safe-test" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">15</span>
+            <h2 id="dry-run-title">第一次先做不寫入的安全測試</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="dry-run"
+            (click)="copySectionLink('dry-run')"
+            aria-label="複製第一次安全測試章節連結"
+          >
+            @if (copiedSection() === 'dry-run') {
+              已複製
+            } @else if (copyFailedSection() === 'dry-run') {
+              無法複製
+            } @else {
+              #dry-run
+            }
+          </button>
+        </div>
+
+        <div class="callout callout--success" role="note">
+          <strong>所有遊戲先保持 write_to_google_sheets = false</strong>
+          程式會抓排行與人氣，但不會修改任何試算表。強制 dry-run 發現錯誤時也不會寄 Gmail 通知。
+        </div>
+        <ol class="steps">
+          <li>儲存 <code>config.toml</code>，確認要測試的遊戲已啟用、寫入仍關閉。</li>
+          <li>
+            macOS 雙擊 <code>2_開始抓取.command</code>；Windows 雙擊 <code>2_開始抓取.cmd</code>。
+          </li>
+          <li>瀏覽器開啟後等待；若出現巴哈安全驗證，請自行完成。程式不會繞過 CAPTCHA。</li>
+          <li>逐一核對遊戲名稱、排行、人氣與 page 是否和巴哈頁面相同。</li>
+          <li>看到「write_to_google_sheets=false，未寫入 Google Sheets」才是此階段的正確結果。</li>
+        </ol>
+        <pre><code>抓取成功：夜鴉｜排行 123｜人氣 456｜page=5
+夜鴉：write_to_google_sheets=false，未寫入 Google Sheets。</code></pre>
+        <p>
+          客服可能會請您用命令列的
+          <code>--dry-run</code
+          >，它會強制所有遊戲不寫入、不寄信，即使設定檔誤開啟寫入。一般使用者不需要自行操作。
+        </p>
+      </section>
+
+      <section id="production-run" class="guide-section" aria-labelledby="production-run-title">
+        <span id="daily-use" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">16</span>
+            <h2 id="production-run-title">開啟正式寫入與平常執行</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="production-run"
+            (click)="copySectionLink('production-run')"
+            aria-label="複製正式寫入與平常執行章節連結"
+          >
+            @if (copiedSection() === 'production-run') {
+              已複製
+            } @else if (copyFailedSection() === 'production-run') {
+              無法複製
+            } @else {
+              #production-run
+            }
+          </button>
+        </div>
+
+        <p>建議一次只開一個遊戲，確認試算表真的寫對，再開下一個。</p>
+        <ol class="steps">
+          <li>
+            在產生器把遊戲 1 的「寫入 Google Sheets」開啟，重新下載並替換
+            config.toml；其他遊戲仍保持關閉寫入。
+          </li>
+          <li>雙擊開始抓取，等待顯示「Google Sheets 更新完成」與列號。</li>
+          <li>回到試算表，確認今天那一列的排行與人氣正確，沒有寫到別人的表。</li>
+          <li>依序開啟遊戲 2、3。任何一人的 JSON 或 Sheets 失敗，不會阻止其他遊戲繼續。</li>
+        </ol>
+        <div class="callout callout--success" role="note">
+          <strong>平常只要雙擊開始抓取</strong>
+          看到「全部處理完成」即可關閉視窗。成功時不寄信；異常時才彙整通知。執行紀錄保存在同資料夾的
+          <code>last-run.log</code>。
+        </div>
+        <div class="callout callout--warning" role="note">
+          <strong>不要一天重複執行很多次</strong>
+          程式會更新今天同一列而不是新增列，但仍請合理控制頻率，避免增加巴哈與 Google API 負擔。
+        </div>
+      </section>
+
+      <section
+        id="windows-scheduled-task"
+        class="guide-section"
+        aria-labelledby="windows-scheduled-task-title"
+      >
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">17</span>
+            <h2 id="windows-scheduled-task-title">Windows：每天 09:00 自動抓取</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="windows-scheduled-task"
+            (click)="copySectionLink('windows-scheduled-task')"
+            aria-label="複製 Windows 每日工作排程章節連結"
+          >
+            @if (copiedSection() === 'windows-scheduled-task') {
+              已複製
+            } @else if (copyFailedSection() === 'windows-scheduled-task') {
+              無法複製
+            } @else {
+              #windows-scheduled-task
+            }
+          </button>
+        </div>
+
+        <p class="lead">
+          這是 Windows 選用功能。09:00 是電腦本機時間；試算表要找哪一天，仍由每個遊戲的
+          <code>timezone</code> 決定。
+        </p>
+        <div class="callout callout--warning" role="note">
+          <strong>先手動成功，再安裝排程</strong>
+          先完成不寫入測試與正式寫入；啟用 Gmail 時，也要用同一個 Windows
+          帳號完成首次授權並收到測試信。安裝排程不會立刻抓取。
+        </div>
+        <ol class="steps">
+          <li>把 GamerCatch 資料夾放到「文件」等不會移動的固定位置。</li>
+          <li>雙擊 <code>3_安裝每天早上9點自動抓取.cmd</code>。</li>
+          <li>確認畫面顯示 Task 名稱與下次執行時間。重複安裝會更新同一工作，不會建立副本。</li>
+          <li>隔天查看 <code>last-scheduled-run.log</code>；一個 Task 會處理所有已啟用的遊戲。</li>
+        </ol>
+        <h3>執行條件與限制</h3>
+        <ul class="check-list">
+          <li>使用目前登入的 Windows 帳號與標準權限，不要求管理員，也不儲存 Windows 密碼。</li>
+          <li>鎖定畫面仍可執行；登出或完全關機時不會執行。</li>
+          <li>睡眠時會依硬體與電源設定嘗試喚醒；錯過 09:00 時，之後登入且網路可用會補跑。</li>
+          <li>
+            <code>headless = false</code> 會開 Chromium；背景執行遇到 CAPTCHA
+            時仍需改回顯示瀏覽器後手動處理。
+          </li>
+          <li>排程不會開 Google 登入頁。Gmail 授權失效時，用同一 Windows 帳號重新執行首次授權。</li>
+          <li>
+            停用或刪除：開啟「工作排程器」，在程式庫找到
+            <code>GamerCatch-Daily-0900</code> 開頭項目。
+          </li>
+        </ul>
+        <div class="callout callout--info" role="note">
+          <strong>搬動資料夾或換新版後要重裝</strong>
+          Task 記住完整路徑。只改同一位置的 config.toml
+          不必重裝；移動、改名或換到新版資料夾後，請在新位置再次雙擊安裝腳本。
+        </div>
+      </section>
+
+      <section id="change-game" class="guide-section" aria-labelledby="change-game-title">
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">18</span>
+            <h2 id="change-game-title">更換遊戲時要修改與確認什麼</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="change-game"
+            (click)="copySectionLink('change-game')"
+            aria-label="複製更換遊戲章節連結"
+          >
+            @if (copiedSection() === 'change-game') {
+              已複製
+            } @else if (copyFailedSection() === 'change-game') {
+              無法複製
+            } @else {
+              #change-game
+            }
+          </button>
+        </div>
+
+        <p>不需要重裝 GamerCatch。先備份目前可用的 config.toml，再於產生器修改要更換的遊戲。</p>
+        <div class="callout callout--warning" role="note">
+          <strong>第一步先關閉寫入</strong>
+          新遊戲保持
+          <code>write_to_google_sheets = false</code>。確認抓到正確遊戲前，不要寫入試算表。
+        </div>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="更換遊戲設定對照">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">要檢查的設定</th>
+                <th scope="col">更換時怎麼改</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">game_name</th>
+                <td>改成巴哈排行卡片上的完整新名稱，空格與符號都要一致。</td>
+              </tr>
+              <tr>
+                <th scope="row">end_page</th>
+                <td>新遊戲不在掃描範圍時逐步提高；這會套用到所有遊戲。</td>
+              </tr>
+              <tr>
+                <th scope="row">試算表與分頁</th>
+                <td>換表時修改 spreadsheet_id 與 worksheet_name。</td>
+              </tr>
+              <tr>
+                <th scope="row">JSON</th>
+                <td>
+                  換擁有者或帳號時改 service account 路徑，並把新表分享給該 JSON 的 client_email。
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">日期列與欄位</th>
+                <td>核對 first_data_row、日期、排行、人氣欄，並先建立今天日期。</td>
+              </tr>
+              <tr>
+                <th scope="row">通知收件人</th>
+                <td>核對專用收件人；留空才會使用 Gmail 全域預設。</td>
+              </tr>
+              <tr>
+                <th scope="row">啟用狀態</th>
+                <td>啟用新遊戲並停用不用的舊項目，避免同時執行。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ol class="steps">
+          <li>先確認新表已分享給正確 client_email，而且今天日期列存在。</li>
+          <li>先做不寫入測試，核對遊戲名稱、排行、人氣與 page。</li>
+          <li>測試正確後，一次只開一個正式寫入，再核對表、分頁、日期列與欄位。</li>
+          <li>找不到遊戲時先核對名稱，再逐步提高 end_page，不要一開始就設到最大。</li>
+        </ol>
+      </section>
+
+      <section id="troubleshooting" class="guide-section" aria-labelledby="troubleshooting-title">
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">19</span>
+            <h2 id="troubleshooting-title">常見錯誤快速對照</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="troubleshooting"
+            (click)="copySectionLink('troubleshooting')"
+            aria-label="複製常見錯誤章節連結"
+          >
+            @if (copiedSection() === 'troubleshooting') {
+              已複製
+            } @else if (copyFailedSection() === 'troubleshooting') {
+              無法複製
+            } @else {
+              #troubleshooting
+            }
+          </button>
+        </div>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="常見錯誤快速對照表">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">看到的問題</th>
+                <th scope="col">怎麼處理</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">發行檔不完整</th>
+                <td>完整解壓縮整個資料夾，不要單獨移動腳本或主程式。</td>
+              </tr>
+              <tr>
+                <th scope="row">Chromium 安裝失敗</th>
+                <td>確認網路、代理與磁碟空間，再執行首次設定。</td>
+              </tr>
+              <tr>
+                <th scope="row">設定格式錯誤</th>
+                <td>用網頁產生器重新下載；手改時檢查雙引號、等號與 [[games]]。</td>
+              </tr>
+              <tr>
+                <th scope="row">找不到遊戲</th>
+                <td>名稱要與巴哈完全相同，必要時逐步提高 end_page。</td>
+              </tr>
+              <tr>
+                <th scope="row">找不到 JSON</th>
+                <td>核對 credentials 路徑、檔名與是否誤成 .json.json。</td>
+              </tr>
+              <tr>
+                <th scope="row">Sheets JSON 格式錯誤</th>
+                <td>OAuth client 或 API key 不能替代 service account JSON。</td>
+              </tr>
+              <tr>
+                <th scope="row">Google 403</th>
+                <td>確認 Sheets API 已啟用，且試算表以編輯者分享給正確 client_email。</td>
+              </tr>
+              <tr>
+                <th scope="row">工作表不存在</th>
+                <td>worksheet_name 必須與底部分頁完全相同。</td>
+              </tr>
+              <tr>
+                <th scope="row">找不到今天日期</th>
+                <td>先加入今天，檢查時區、日期欄與 first_data_row。</td>
+              </tr>
+              <tr>
+                <th scope="row">日期重複</th>
+                <td>今天只能出現一次，修正重複列後重試。</td>
+              </tr>
+              <tr>
+                <th scope="row">輸出欄位重疊</th>
+                <td>同一試算表同一分頁的不同遊戲不可共用排行或人氣欄。</td>
+              </tr>
+              <tr>
+                <th scope="row">Gmail 通知失敗</th>
+                <td>查看 log；授權問題用相同系統帳號重新執行首次授權。</td>
+              </tr>
+              <tr>
+                <th scope="row">排程 09:00 未執行</th>
+                <td>確認帳號仍登入、Task 未停用，以及電腦、網路與喚醒設定可用。</td>
+              </tr>
+              <tr>
+                <th scope="row">排程執行但未寫入</th>
+                <td>查看 last-scheduled-run.log，再檢查今天日期、寫入開關與 CAPTCHA。</td>
+              </tr>
+              <tr>
+                <th scope="row">PowerShell 被公司封鎖</th>
+                <td>聯絡 IT；不要改成 Unrestricted、停用防毒或以管理員強行繞過。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout--info" role="note">
+          <strong>其中一個人失敗，不代表全部失敗</strong>
+          程式會繼續處理其他遊戲，最後彙整失敗項目。請依遊戲名稱修正對應的 JSON、試算表或設定。
+        </div>
+      </section>
+
+      <section id="security" class="guide-section" aria-labelledby="security-title">
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">20</span>
+            <h2 id="security-title">私鑰、OAuth 與帳號安全</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="security"
+            (click)="copySectionLink('security')"
+            aria-label="複製憑證與帳號安全章節連結"
+          >
+            @if (copiedSection() === 'security') {
+              已複製
+            } @else if (copyFailedSection() === 'security') {
+              無法複製
+            } @else {
+              #security
+            }
+          </button>
+        </div>
+
+        <h3>懷疑 service account JSON 外洩</h3>
+        <ol class="steps">
+          <li>立刻到 Google Cloud 的 service account「金鑰」頁面，停用或刪除舊金鑰。</li>
+          <li>建立新 JSON，替換 credentials 裡的舊檔。</li>
+          <li>若新金鑰仍屬同一 service account，已分享的試算表通常不必重新分享。</li>
+        </ol>
+        <h3>懷疑 Gmail OAuth 外洩</h3>
+        <ul class="check-list">
+          <li>
+            OAuth JSON 含 client secret；到 Google Cloud 刪除舊 OAuth client，建立新 client
+            並重新授權。
+          </li>
+          <li>到 Google 帳號撤銷應用程式存取權，再重新執行 Gmail 首次授權。</li>
+          <li>
+            refresh token 只應存在 Keychain 或 Credential Manager，不能出現在設定檔或問題回報。
+          </li>
+        </ul>
+        <h3>求助時可以提供</h3>
+        <ul class="check-list">
+          <li>作業系統、x64 / arm64、GamerCatch Release 版本。</li>
+          <li>完整錯誤畫面、last-run.log 或 last-scheduled-run.log；上傳前先檢查個人路徑。</li>
+          <li>隱藏試算表網址與電子郵件後的 config.toml。</li>
+        </ul>
+        <div class="callout callout--danger" role="alert">
+          <strong>絕對不要提供</strong>
+          service account JSON、Gmail OAuth JSON、client_secret、refresh
+          token、private_key，或可編輯的 Google Sheet 公開連結。
+        </div>
+      </section>
+
+      <section id="update" class="guide-section" aria-labelledby="update-title">
+        <span id="upgrade" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">21</span>
+            <h2 id="update-title">更新 GamerCatch</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="update"
+            (click)="copySectionLink('update')"
+            aria-label="複製更新 GamerCatch 章節連結"
+          >
+            @if (copiedSection() === 'update') {
+              已複製
+            } @else if (copyFailedSection() === 'update') {
+              無法複製
+            } @else {
+              #update
+            }
+          </button>
+        </div>
+
+        <ol class="steps">
+          <li>備份舊資料夾中的 <code>config.toml</code> 與整個 <code>credentials</code>。</li>
+          <li>從官方 Release 下載新版並核對 SHA-256，解壓縮到新的資料夾，不要直接覆蓋舊版。</li>
+          <li>用新版設定產生器重新產生設定，或把已確認相容的設定與 JSON 複製到新版。</li>
+          <li>先關閉所有 Google Sheets 寫入，重新做一次安全測試。</li>
+          <li>Gmail 憑證屬於相同系統帳號時通常可沿用，但仍應執行首次授權確認測試信。</li>
+          <li>Windows 每日排程使用舊路徑；在新版資料夾重新執行排程安裝腳本。</li>
+          <li>全部驗證完成後再保留或安全刪除舊資料夾。</li>
+        </ol>
+      </section>
+
+      <section id="checksum" class="guide-section" aria-labelledby="checksum-title">
+        <span id="checksums" class="anchor-alias" aria-hidden="true"></span>
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">22</span>
+            <h2 id="checksum-title">下載後核對 SHA-256</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="checksum"
+            (click)="copySectionLink('checksum')"
+            aria-label="複製核對 SHA-256 章節連結"
+          >
+            @if (copiedSection() === 'checksum') {
+              已複製
+            } @else if (copyFailedSection() === 'checksum') {
+              無法複製
+            } @else {
+              #checksum
+            }
+          </button>
+        </div>
+
+        <p>
+          雜湊像檔案指紋，可以確認下載檔沒有被破壞或換掉。先在同一個 Release 下載
+          <a
+            href="https://github.com/Willseed/gamer-catch-rust/releases/latest/download/SHA256SUMS.txt"
+            >SHA256SUMS.txt</a
+          >，再計算 ZIP。
+        </p>
+        <div class="platform-grid">
+          <section class="platform-card">
+            <p class="platform-label">macOS 終端機</p>
+            <pre><code>shasum -a 256 GamerCatch-macOS-arm64.zip</code></pre>
+          </section>
+          <section class="platform-card">
+            <p class="platform-label">Windows PowerShell</p>
+            <pre><code>Get-FileHash .\GamerCatch-Windows-x64.zip -Algorithm SHA256</code></pre>
+          </section>
+        </div>
+        <ol class="steps">
+          <li>在 ZIP 所在資料夾開啟終端機或 PowerShell，執行對應指令。</li>
+          <li>
+            把顯示的 64 個十六進位字元與 SHA256SUMS.txt 中相同檔名那一行逐字比較；大小寫可不同。
+          </li>
+          <li>完全相同才解壓縮。只要一個字不同，就刪除 ZIP，回官方 Release 重新下載。</li>
+        </ol>
+      </section>
+
+      <section id="checklist" class="guide-section" aria-labelledby="checklist-title">
+        <div class="section-title-row">
+          <div class="section-title">
+            <span class="section-number">23</span>
+            <h2 id="checklist-title">完成前最後檢查</h2>
+          </div>
+          <button
+            type="button"
+            class="copy-link"
+            data-section-link="checklist"
+            (click)="copySectionLink('checklist')"
+            aria-label="複製完成檢查表章節連結"
+          >
+            @if (copiedSection() === 'checklist') {
+              已複製
+            } @else if (copyFailedSection() === 'checklist') {
+              無法複製
+            } @else {
+              #checklist
+            }
+          </button>
+        </div>
+
+        <ul class="final-checklist">
+          <li>
+            <label
+              ><input type="checkbox" /> 已從官方 Release 下載、核對 SHA-256 並完整解壓縮。</label
+            >
+          </li>
+          <li>
+            <label><input type="checkbox" /> 已完成首次設定與 Chromium 準備。</label>
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" /> 每位使用者的 Cloud 專案都已啟用 Google Sheets API。</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" /> 每份 JSON 都是 service account key，且只放在本機
+              credentials。</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" /> 每張試算表已分享給正確 client_email，權限為編輯者。</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" /> 產生器中的遊戲、網址、分頁、JSON
+              路徑與欄位配對正確。</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" /> 第一次測試時，所有 Google Sheets 寫入開關都關閉。</label
+            >
+          </li>
+          <li>
+            <label><input type="checkbox" /> 已逐一核對每個遊戲的名稱、排行、人氣與 page。</label>
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" /> 已一次開啟一個正式寫入，核對今天資料在正確試算表。</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" /> 若啟用 Gmail，所有有效收件人都收到首次授權測試信。</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" /> 若使用 Windows 排程，已用相同帳號確認每日 09:00 與
+              log。</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" /> 沒有把任何 JSON、私鑰或 token 上傳到網站、GitHub
+              或聊天室。</label
+            >
+          </li>
+        </ul>
+
+        <div class="references">
+          <h3>官方參考資料</h3>
+          <ul>
+            <li>
+              <a
+                href="https://developers.google.com/workspace/guides/create-credentials"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Google Workspace：建立憑證</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://docs.cloud.google.com/iam/docs/keys-create-delete"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Google Cloud：建立與刪除 JSON 金鑰</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://support.google.com/a/users/answer/13309904"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Google Sheets：分享檔案</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://developers.google.com/workspace/gmail/api/auth/scopes"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Gmail API：OAuth 權限範圍</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://support.google.com/cloud/answer/15549945"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Google Auth Platform：Audience 與 Testing</a
+              >
+            </li>
+          </ul>
+        </div>
+
+        <div class="callout callout--success" role="status">
+          <strong>完成</strong>
+          您已設定多遊戲、多人 Google Sheets 與選用的 Gmail 通知。日後新增或更換遊戲，回到
+          <a href="#change-game">更換遊戲章節</a>，再重新做不寫入測試。
+        </div>
+      </section>
+    </article>
+  </div>
+</main>

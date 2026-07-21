@@ -1,78 +1,23 @@
-巴哈多遊戲排行抓取工具 — 雙擊使用說明
+巴哈多遊戲排行抓取工具 — 開始使用
 
-如果第一次使用，請先閱讀資料夾內對應平台的「GamerCatch_零基礎使用手冊」PDF。
+完整線上教學：https://gamer.catch.pylot.dev/guide#quick-start
+
+網頁教學會隨工具更新，發行包不再內附 PDF。
 
 第一次使用
-1. 先把整個發行資料夾解壓縮，不要直接在 ZIP 裡執行。
+1. 先將整個發行資料夾解壓縮，不要直接在 ZIP 內執行。
 2. macOS 雙擊「1_首次設定.command」；Windows 雙擊「1_首次設定.cmd」。
-3. 將每個人的 Google service account JSON 放進 credentials 資夾。
-4. 在開啟的 config.toml 依照註解填寫遊戲、試算表與 JSON 檔名，然後儲存。
-5. 先保持 write_to_google_sheets = false 測試。
-6. Gmail 異常通知是選用功能；不用時保持 gmail_notifications.enabled = false。
+3. 首次設定會安裝 Chromium，開啟 config.toml、credentials 資料夾與線上教學。
+4. 依線上教學產生設定檔，並完成 Google Sheets 與選用的 Gmail 設定。
 
 平常執行
 - macOS：雙擊「2_開始抓取.command」。
 - Windows：雙擊「2_開始抓取.cmd」。
-- 確認排行與人氣正確後，才把各遊戲的 write_to_google_sheets 改成 true。
-- 執行結果也會保存在同一資料夾的 last-run.log。
-- 成功執行與 dry-run 都不會寄 Gmail 通知。
-
-Gmail 異常通知（選用）
-1. Gmail 與 Sheets 使用不同憑證。先在 Google Cloud 啟用 Gmail API，設定 Google Auth Platform，且只加入 gmail.send 權限。
-2. 建立 OAuth client 時，類型必須選「電腦版應用程式」；把下載的 JSON 重新命名成 gmail-oauth-client.json，放入 credentials。
-3. 在 [gmail_notifications] 填 sender_email、default_recipients 與 OAuth JSON 路徑，再把 enabled 改成 true。
-4. 每個遊戲的 notification_recipients = [] 會使用 default_recipients；填入地址時會改成只通知那些人。
-5. macOS 雙擊「Gmail_首次授權.command」；Windows 雙擊「Gmail_首次授權.cmd」。登入 sender_email 的帳號並同意 gmail.send。
-6. 所有有效收件人都應各自收到測試信。每封分開寄送，彼此看不到地址；正常異常信也會依負責遊戲分開彙整。
-7. refresh token 只存於目前帳號的 macOS Keychain 或 Windows Credential Manager，不會產生 token 檔。換電腦、換系統帳號、換寄件 Gmail 或授權失效時要重新授權。
-8. 一份 config.toml 只支援一個寄件 Gmail，但可有多位收件人；每個 Windows／macOS 登入帳號都要各自首次授權，授權不會跟著 ZIP 複製。
-9. External 專案若保持 Testing，Gmail 授權通常七天失效，不適合長期排程。請依帳號情況使用 Internal，或切換 In production 並完成 Google 要求的適用設定／驗證。
-10. OAuth JSON 含 client secret，不可上傳、寄給別人或附在問題回報。它也不能用 Sheets service account JSON、Web client 或 API key 代替。
-
-Windows 每天上午 9 點自動執行（選用）
-1. 先確認手動抓取及 Google Sheets 正式寫入都成功；若啟用 Gmail，也要先在相同 Windows 帳號收到測試信。
-2. 把整個 GamerCatch 資料夾放在不會移動的位置。
-3. 雙擊「3_安裝每天早上9點自動抓取.cmd」。不需要系統管理員權限或密碼。
-4. 一個 Task 會處理 config.toml 裡所有 enabled = true 的遊戲；結果寫在 last-scheduled-run.log。
-5. 目前 Windows 帳號必須保持登入。鎖定畫面可以執行；登出或完全關機時無法準時執行。
-6. headless = false 時會在 09:00 開啟 Chromium；改成 true 可在背景執行，但遇到安全驗證仍要手動處理。
-7. 移動資料夾或換到新版資料夾後，請在新位置再安裝一次以更新路徑。
-8. 排程不會開啟 Gmail 登入頁；授權失效時請查看 last-scheduled-run.log，再用相同 Windows 帳號重新雙擊 Gmail 首次授權檔。
-
-更換遊戲
-1. 先備份 config.toml，並把要更換的區塊設為 write_to_google_sheets = false。
-2. 修改 game_name；找不到新遊戲時，再逐步提高 [bahamut] 的 end_page。
-3. 若換試算表或擁有者，修改 spreadsheet_id、worksheet_name、service_account_key_path、日期列及欄位；啟用 Gmail 時也要核對 notification_recipients。
-4. 新試算表要分享給該 JSON 的 client_email，並先建立今天日期。
-5. 先手動測試排行、人氣與 page 正確，再只開啟新遊戲的正式寫入。
-6. 不用的舊遊戲設 enabled = false。Windows 只改 config.toml 時不必重裝 Task。
-
-多遊戲與多人帳號
-- 每一個 [[games]] 區塊代表一個遊戲、一張 Google Sheet 與一份登入憑證。
-- 不同人的 service_account_key_path 可以指向不同 JSON。
-- 若兩項剛好使用同一帳號，也可以重複填同一個 JSON 路徑。
-- 要啟用第二、第三個遊戲，將其 enabled 改成 true 並填完該區塊。
-- notification_recipients 非空白時會取代 default_recipients，不是額外加上去。
+- 執行結果會保存在同一資料夾的 last-run.log。
+- Windows 每天上午 9 點自動執行請依線上教學安裝。
 
 安全提醒
-- service account JSON 內含私鑰，不可傳到公開網站、Git 或群組聊天室。
-- Gmail OAuth JSON 內含 client secret，也不可公開；refresh token 只應留在 Keychain 或 Credential Manager。
-- 每張試算表都要分享「編輯者」權限給該 JSON 裡的 client_email。
-- 日期欄必須有今天的日期；工具不會自動新增資料列。
+- service account JSON 與 Gmail OAuth JSON 均不可上傳公開網站、Git 或群組聊天室。
+- 設定產生器只會在瀏覽器內產生 config.toml，請勿將憑證檔上傳給產生器。
 
-Gmail 通知範圍
-- 會寄：抓取頁面、巴哈安全驗證、DOM、排行／人氣、找不到遊戲，以及已啟用的 Sheets 寫入異常。
-- 不會寄：成功、dry-run、刻意 write_to_google_sheets = false。
-- config.toml 無法讀取、程式未啟動、斷網或 Gmail 本身失敗時可能寄不出去，仍須查看 last-run.log 或 last-scheduled-run.log。
-- Gmail 寄送失敗不會蓋掉原本錯誤；log 會保留兩者。
-
-Gmail 常見錯誤
-- redirect_uri_mismatch 或 JSON 格式錯誤：必須下載「電腦版應用程式」OAuth JSON。
-- access_denied：把寄件帳號加入 External Testing 的 Test users；公司或學校政策限制時請聯絡管理員。
-- 找不到授權或權杖更新失敗：以相同作業系統帳號重新雙擊 Gmail 首次授權檔。
-- 本機回呼逾時：保持黑色視窗開啟，並在五分鐘內完成瀏覽器授權。
-
-若 macOS 阻擋未簽章檔案，請按住 Control 點擊檔案後選「打開」。
-若 Windows 顯示 SmartScreen，請先確認檔案來源可信再選擇執行。
-若排程安裝後出現亂碼或「is not recognized」，且前面已看到「Scheduled task installed or updated.」，v0.1.1 的 Windows 工作排程通常已建立，亂碼只影響畫面。請完整解壓縮 v0.2.0 或更新版本，將原本的 config.toml 與 credentials 安全複製到新版資料夾，再於新版資料夾雙擊「3_安裝每天早上9點自動抓取.cmd」；不必先刪除原 Task，安裝器會直接更新工作與程式路徑。若啟用 Gmail，請一併複製 OAuth JSON，並重新確認授權測試信。
-若公司政策封鎖 PowerShell 或工作排程器，請聯絡 IT；不要停用防毒或改用系統管理員強行執行。
+若遇到問題，請先查看線上教學與 last-run.log。

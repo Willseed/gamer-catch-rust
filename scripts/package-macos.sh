@@ -27,14 +27,8 @@ esac
 BUILD_TARGET_DIR="$PROJECT_DIR/target/package-macos-$PACKAGE_ARCH"
 OUTPUT_DIR="$PROJECT_DIR/dist/GamerCatch-macOS-$PACKAGE_ARCH"
 OUTPUT_ZIP="$PROJECT_DIR/dist/GamerCatch-macOS-$PACKAGE_ARCH.zip"
-MANUAL_PATH="$PROJECT_DIR/output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf"
 if [[ -e "$OUTPUT_DIR" || -e "$OUTPUT_ZIP" ]]; then
   echo "輸出已存在，請先移走：$OUTPUT_DIR 或 $OUTPUT_ZIP" >&2
-  exit 1
-fi
-if [[ ! -f "$MANUAL_PATH" ]]; then
-  echo "找不到 macOS PDF 手冊：$MANUAL_PATH" >&2
-  echo "請先執行 scripts/generate-manual.py。" >&2
   exit 1
 fi
 
@@ -116,7 +110,6 @@ cp "$PROJECT_DIR/README.md" "$OUTPUT_DIR/"
 cp "$PROJECT_DIR/LICENSE" "$OUTPUT_DIR/"
 cp "$PROJECT_DIR/THIRD_PARTY_NOTICES.md" "$OUTPUT_DIR/"
 cp "$PROJECT_DIR/使用說明.txt" "$OUTPUT_DIR/"
-cp "$MANUAL_PATH" "$OUTPUT_DIR/"
 cp "$PROJECT_DIR/scripts/1_首次設定.command" "$OUTPUT_DIR/"
 cp "$PROJECT_DIR/scripts/2_開始抓取.command" "$OUTPUT_DIR/"
 cp "$PROJECT_DIR/scripts/Gmail_首次授權.command" "$OUTPUT_DIR/"

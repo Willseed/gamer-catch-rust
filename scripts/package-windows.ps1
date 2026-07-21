@@ -52,13 +52,9 @@ switch ($RustHost) {
 $BuildTargetDir = Join-Path $ProjectDir "target\package-windows-$PackageArch"
 $OutputDir = Join-Path $ProjectDir "dist\GamerCatch-Windows-$PackageArch"
 $OutputZip = Join-Path $ProjectDir "dist\GamerCatch-Windows-$PackageArch.zip"
-$ManualPath = Join-Path $ProjectDir "output\pdf\GamerCatch_零基礎使用手冊_Windows.pdf"
 
 if ((Test-Path -LiteralPath $OutputDir) -or (Test-Path -LiteralPath $OutputZip)) {
     throw "Output already exists; move or remove it first: $OutputDir or $OutputZip"
-}
-if (-not (Test-Path -LiteralPath $ManualPath -PathType Leaf)) {
-    throw "Windows PDF manual not found: $ManualPath. Run scripts/generate-manual.py first."
 }
 
 $HasArtifactSigning = $env:WINDOWS_ARTIFACT_SIGNING_DLIB -and $env:WINDOWS_ARTIFACT_SIGNING_METADATA
@@ -160,7 +156,6 @@ Copy-Item -LiteralPath (Join-Path $ProjectDir "README.md") -Destination $OutputD
 Copy-Item -LiteralPath (Join-Path $ProjectDir "LICENSE") -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "THIRD_PARTY_NOTICES.md") -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "使用說明.txt") -Destination $OutputDir
-Copy-Item -LiteralPath $ManualPath -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\1_首次設定.cmd") -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\2_開始抓取.cmd") -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\Gmail_首次授權.cmd") -Destination $OutputDir
@@ -215,4 +210,4 @@ if (-not (Test-Path -LiteralPath $OutputZip -PathType Leaf)) {
 }
 
 Write-Host "Windows package created: $OutputZip"
-Write-Host "After setup and a successful manual run, use the third CMD file to install the optional daily task."
+Write-Host "After setup and a successful test run, use the third CMD file to install the optional daily task."

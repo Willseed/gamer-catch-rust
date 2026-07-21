@@ -1,0 +1,37 @@
+<a class="skip-link" href="#main-content">跳到主要內容</a>
+<header class="site-header">
+  <div class="content-width nav-shell">
+    <a class="brand" routerLink="/" aria-label="GamerCatch 首頁">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>GamerCatch</span>
+    </a>
+    <nav aria-label="主要導覽">
+      <a routerLink="/generator" routerLinkActive="active">設定產生器</a>
+      <a routerLink="/guide" routerLinkActive="active">完整教學</a>
+      <a routerLink="/downloads" routerLinkActive="active">下載</a>
+    </nav>
+  </div>
+</header>
+
+<router-outlet />
+
+<footer class="site-footer">
+  <div class="content-width footer-grid">
+    <div>
+      <a class="brand footer-brand" routerLink="/" aria-label="GamerCatch 首頁">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>GamerCatch</span>
+      </a>
+      <p>將巴哈排行榜與人氣整理到你的 Google Sheets。</p>
+    </div>
+    <nav aria-label="頁尾導覽">
+      <a routerLink="/generator">建立設定檔</a>
+      <a routerLink="/guide" fragment="security">安全注意事項</a>
+      <a href="https://github.com/Willseed/gamer-catch-rust">GitHub 原始碼</a>
+    </nav>
+  </div>
+  <div class="content-width footer-meta">
+    <span>gamer.catch.pylot.dev</span>
+    <span>非巴哈姆特或 PlayStation 官方網站</span>
+  </div>
+</footer>

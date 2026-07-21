@@ -7,7 +7,7 @@ set "CONFIG=%BASE%config.toml"
 set "CREDENTIALS=%BASE%credentials"
 set "APP=%BASE%GamerCatch.exe"
 set "DRIVER=%BASE%playwright-driver"
-set "MANUAL=%BASE%GamerCatch_零基礎使用手冊_Windows.pdf"
+set "GUIDE_URL=https://gamer.catch.pylot.dev/guide#quick-start"
 
 pushd "%BASE%" >nul
 if not exist "%CREDENTIALS%" mkdir "%CREDENTIALS%"
@@ -24,11 +24,11 @@ if not "%RC%"=="0" goto :install_failed
 
 start "" notepad.exe "%CONFIG%"
 start "" explorer.exe "%CREDENTIALS%"
-if exist "%MANUAL%" start "" "%MANUAL%"
+start "" "%GUIDE_URL%"
 echo.
-echo 設定檔、credentials 資料夾與零基礎手冊已開啟。
+echo 設定檔、credentials 資料夾與線上教學已開啟。
 echo 填寫並儲存後，請雙擊「2_開始抓取.cmd」。
-echo 要啟用異常信件時，再依手冊填寫 Gmail 設定並雙擊「Gmail_首次授權.cmd」。
+echo 要啟用異常信件時，再依線上教學填寫 Gmail 設定並雙擊「Gmail_首次授權.cmd」。
 goto :done
 
 :incomplete

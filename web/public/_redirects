@@ -1,0 +1,3 @@
+# Angular handles application routes in the browser. URL fragments such as
+# /guide#gmail remain available for documentation section links.
+/* /index.html 200

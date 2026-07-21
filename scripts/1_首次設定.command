@@ -6,7 +6,7 @@ CONFIG_PATH="$SCRIPT_DIR/config.toml"
 CREDENTIALS_DIR="$SCRIPT_DIR/credentials"
 BINARY_PATH="$SCRIPT_DIR/GamerCatch"
 DRIVER_PATH="$SCRIPT_DIR/playwright-driver"
-MANUAL_PATH="$SCRIPT_DIR/GamerCatch_零基礎使用手冊_macOS.pdf"
+GUIDE_URL="https://gamer.catch.pylot.dev/guide#quick-start"
 
 cd "$SCRIPT_DIR" || exit 1
 mkdir -p "$CREDENTIALS_DIR"
@@ -32,12 +32,10 @@ fi
 
 open -a TextEdit "$CONFIG_PATH"
 open "$CREDENTIALS_DIR"
-if [[ -f "$MANUAL_PATH" ]]; then
-  open "$MANUAL_PATH"
-fi
+open "$GUIDE_URL"
 echo
-echo "設定檔、credentials 資料夾與零基礎手冊已開啟。"
+echo "設定檔、credentials 資料夾與線上教學已開啟。"
 echo "填寫並儲存後，請雙擊「2_開始抓取.command」。"
-echo "要啟用異常信件時，再依手冊填寫 Gmail 設定並雙擊「Gmail_首次授權.command」。"
+echo "要啟用異常信件時，再依線上教學填寫 Gmail 設定並雙擊「Gmail_首次授權.command」。"
 printf '\n按 Return 關閉視窗…'
 IFS= read -r _ || true

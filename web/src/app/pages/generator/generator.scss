@@ -1,0 +1,398 @@
+:host {
+  display: block;
+}
+
+.page-hero {
+  padding-block: clamp(4rem, 9vw, 7rem);
+}
+
+.page-hero .lead {
+  max-width: 52rem;
+}
+
+.privacy-note {
+  max-width: 52rem;
+  margin-top: 1.75rem;
+  padding: 1rem 1.25rem;
+  border: 2px solid var(--focus);
+  border-radius: var(--radius-card);
+  background: #062b4d;
+  color: var(--text-on-dark);
+}
+
+.generator-form {
+  padding-block: clamp(3rem, 7vw, 6rem);
+}
+
+.form-section {
+  padding-block: clamp(2.5rem, 5vw, 4.5rem);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.section-heading {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 2rem;
+}
+
+.section-heading h2,
+.section-heading p {
+  margin: 0;
+}
+
+.section-heading p {
+  max-width: 55rem;
+  margin-top: 0.5rem;
+  color: var(--muted-on-light);
+}
+
+.step {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.compact-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 54rem;
+}
+
+label:not(.toggle-row, .toggle-panel) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--text-on-light);
+  font-weight: 700;
+}
+
+label b {
+  color: var(--error);
+}
+
+label small,
+.field-help {
+  color: var(--muted-on-light);
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='number'],
+textarea,
+select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 0.875rem;
+  border: 2px solid #68717d;
+  border-radius: var(--radius-input);
+  background: #fff;
+  color: #11151a;
+  font: inherit;
+  font-weight: 500;
+}
+
+textarea {
+  resize: vertical;
+}
+
+input:hover,
+textarea:hover,
+select:hover {
+  border-color: #11151a;
+}
+
+.span-two {
+  grid-column: span 2;
+}
+
+details {
+  margin-top: 1.5rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-card);
+  background: #f5f7fa;
+}
+
+summary {
+  min-height: 3.25rem;
+  padding: 0.875rem 1rem;
+  color: var(--blue-active);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.details-content {
+  padding: 0 1rem 1rem;
+}
+
+.field-help {
+  padding: 0 1rem 1rem;
+  margin: 0;
+}
+
+.toggle-row,
+.toggle-panel {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.toggle-row input,
+.toggle-panel input {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: 0 0 auto;
+  accent-color: var(--blue);
+}
+
+.toggle-row {
+  min-height: 3rem;
+  font-weight: 700;
+}
+
+.toggle-panel {
+  margin-block: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 2px solid var(--blue);
+  border-radius: var(--radius-card);
+  background: #eaf5ff;
+}
+
+.toggle-panel span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.toggle-panel strong {
+  color: #002e59;
+}
+
+.toggle-panel small {
+  color: #274760;
+}
+
+.games-list {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.game-card {
+  overflow: hidden;
+  border: 2px solid #c5cbd3;
+  border-radius: var(--radius-card);
+  background: #fff;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  background: var(--surface-dark);
+  color: var(--text-on-dark);
+}
+
+.game-header h3,
+.game-header p {
+  margin: 0;
+}
+
+.card-kicker {
+  color: var(--focus);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.strong-toggle {
+  color: #fff;
+}
+
+.game-card > .field-grid,
+.game-card > .toggle-panel,
+.game-card > .sheets-fields {
+  margin-inline: 1.5rem;
+}
+
+.game-card > .field-grid {
+  padding-top: 1.5rem;
+}
+
+.sheets-fields {
+  padding-bottom: 1.5rem;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-light);
+  background: #f5f7fa;
+}
+
+.text-button,
+.danger-button {
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.text-button {
+  color: var(--blue-active);
+}
+
+.danger-button {
+  color: #a20f1a;
+}
+
+.text-button:hover,
+.danger-button:hover {
+  border-color: currentColor;
+}
+
+.add-game {
+  margin-top: 1.5rem;
+}
+
+.gmail-fields {
+  max-width: 54rem;
+}
+
+.result-section {
+  margin-top: 4rem;
+  padding: clamp(2rem, 5vw, 4rem);
+  border-radius: var(--radius-card);
+  background: var(--surface-dark);
+  color: var(--text-on-dark);
+}
+
+.result-heading p {
+  color: var(--muted-on-dark);
+}
+
+.issue-box,
+.ready-box {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-card);
+}
+
+.issue-box {
+  border: 2px solid #ff8f99;
+  background: #3c0b10;
+}
+
+.issue-box h3 {
+  margin-top: 0;
+}
+
+.issue-box li + li {
+  margin-top: 0.5rem;
+}
+
+.ready-box {
+  border: 2px solid #69e4a3;
+  background: #07371f;
+}
+
+.download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1.5rem;
+}
+
+.on-dark {
+  border-color: #fff;
+  color: #fff;
+}
+
+.inline-link {
+  color: var(--focus);
+  font-weight: 800;
+}
+
+.action-message {
+  min-height: 1.5rem;
+  color: var(--focus);
+  font-weight: 700;
+}
+
+.preview-details {
+  border-color: #4f5964;
+  background: #070809;
+}
+
+.preview-details summary {
+  color: var(--focus);
+}
+
+pre {
+  max-height: 32rem;
+  overflow: auto;
+  margin: 0;
+  padding: 1rem;
+  border-top: 1px solid #4f5964;
+  color: #f7f9fc;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .field-grid,
+  .compact-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .span-two {
+    grid-column: auto;
+  }
+
+  .section-heading {
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+  }
+
+  .step {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .game-card > .field-grid,
+  .game-card > .toggle-panel,
+  .game-card > .sheets-fields {
+    margin-inline: 1rem;
+  }
+}

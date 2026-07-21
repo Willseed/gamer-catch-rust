@@ -15,6 +15,8 @@ from pathlib import PurePosixPath
 
 CONFIG_FILENAME = "config.toml"
 CREDENTIALS_DIRECTORY = "credentials"
+USAGE_FILENAME = "使用說明.txt"
+WEB_GUIDE_URL = "https://gamer.catch.pylot.dev/guide#quick-start"
 WINDOWS_STARTER_ENTRY = "1_首次設定.cmd"
 WINDOWS_RUNNER_ENTRY = "2_開始抓取.cmd"
 WINDOWS_GMAIL_AUTHORIZER_ENTRY = "Gmail_首次授權.cmd"
@@ -35,7 +37,7 @@ COMMON_REQUIRED = {
     "README.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
-    "使用說明.txt",
+    USAGE_FILENAME,
     "config.example.toml",
     CONFIG_FILENAME,
 }
@@ -48,7 +50,6 @@ class PlatformFiles:
     starter: str
     runner: str
     gmail_authorizer: str
-    manual: str
     extra_required: tuple[str, ...] = ()
 
 
@@ -59,7 +60,6 @@ PLATFORM_FILES = {
         starter="1_首次設定.command",
         runner="2_開始抓取.command",
         gmail_authorizer="Gmail_首次授權.command",
-        manual="GamerCatch_零基礎使用手冊_macOS.pdf",
     ),
     "windows": PlatformFiles(
         executable="GamerCatch.exe",
@@ -67,7 +67,6 @@ PLATFORM_FILES = {
         starter=WINDOWS_STARTER_ENTRY,
         runner=WINDOWS_RUNNER_ENTRY,
         gmail_authorizer=WINDOWS_GMAIL_AUTHORIZER_ENTRY,
-        manual="GamerCatch_零基礎使用手冊_Windows.pdf",
         extra_required=(WINDOWS_SCHEDULER_ENTRY, WINDOWS_SCHEDULER_SCRIPT),
     ),
 }
@@ -164,13 +163,15 @@ def validate_zip_structure(archive: zipfile.ZipFile) -> list[str]:
         parsed = PurePosixPath(entry)
         if parsed.is_absolute() or ".." in parsed.parts:
             fail(f"unsafe ZIP path: {entry}")
+        if parsed.suffix.lower() == ".pdf":
+            fail(f"release ZIP must use the online guide instead of PDF: {entry}")
     return entries
 
 
 def validate_required_files(
     archive: zipfile.ZipFile, entries: list[str], files: PlatformFiles
 ) -> tuple[bytes, bytes]:
-    existence_only = (COMMON_REQUIRED - {CONFIG_FILENAME}) | {
+    existence_only = (COMMON_REQUIRED - {CONFIG_FILENAME, USAGE_FILENAME}) | {
         files.starter,
         files.runner,
         files.gmail_authorizer,
@@ -180,22 +181,25 @@ def validate_required_files(
         read_required(archive, entries, required)
 
     validate_config(read_required(archive, entries, CONFIG_FILENAME))
-    validate_manual(read_required(archive, entries, files.manual), files.manual)
+    usage = decode_utf8(read_required(archive, entries, USAGE_FILENAME), USAGE_FILENAME)
+    require_markers(usage, (WEB_GUIDE_URL,), USAGE_FILENAME)
     return (
         read_required(archive, entries, files.executable),
         read_required(archive, entries, files.driver_node),
     )
 
 
-def validate_manual(data: bytes, name: str) -> None:
-    if not data.startswith(b"%PDF-") or b"%%EOF" not in data[-2048:]:
-        fail(f"manual is not a complete PDF: {name}")
-
-
 def require_markers(text: str, markers: tuple[str, ...], name: str) -> None:
     missing = [marker for marker in markers if marker not in text]
     if missing:
         fail(f"{name} is missing required markers: {missing}")
+
+
+def decode_utf8(data: bytes, name: str) -> str:
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        fail(f"{name} is not UTF-8: {error}")
 
 
 def read_utf8_cmd(
@@ -211,10 +215,7 @@ def read_utf8_cmd(
         or b"\n" in remaining_line_endings
     ):
         fail(f"{name} must use CRLF line endings")
-    try:
-        return data.decode("utf-8")
-    except UnicodeDecodeError as error:
-        fail(f"{name} is not UTF-8: {error}")
+    return decode_utf8(data, name)
 
 
 def reject_parenthesized_cmd_control_flow(script: str, name: str) -> None:
@@ -287,6 +288,9 @@ def validate_windows_scheduler(
         WINDOWS_GMAIL_AUTHORIZER_ENTRY,
     )
 
+    starter = commands[WINDOWS_STARTER_ENTRY]
+    require_markers(starter, (WEB_GUIDE_URL,), WINDOWS_STARTER_ENTRY)
+
     entry = commands[WINDOWS_SCHEDULER_ENTRY]
     require_markers(
         entry,
@@ -336,15 +340,20 @@ def validate_macos_gmail_authorizer(
     archive: zipfile.ZipFile, entries: list[str], files: PlatformFiles
 ) -> None:
     data = read_required(archive, entries, files.gmail_authorizer)
-    try:
-        script = data.decode("utf-8")
-    except UnicodeDecodeError as error:
-        fail(f"{files.gmail_authorizer} is not UTF-8: {error}")
+    script = decode_utf8(data, files.gmail_authorizer)
     require_markers(
         script,
         ("--authorize-gmail", "last-gmail-authorization.log", "set -uo pipefail"),
         files.gmail_authorizer,
     )
+
+
+def validate_macos_starter(
+    archive: zipfile.ZipFile, entries: list[str], files: PlatformFiles
+) -> None:
+    data = read_required(archive, entries, files.starter)
+    script = decode_utf8(data, files.starter)
+    require_markers(script, (WEB_GUIDE_URL,), files.starter)
 
 
 def validate_empty_credentials_directory(
@@ -379,6 +388,7 @@ def validate_archive(path: str, platform: str) -> None:
         if platform == "macos":
             validate_macos_executable_modes(archive, entries, files)
             validate_macos_gmail_authorizer(archive, entries, files)
+            validate_macos_starter(archive, entries, files)
         else:
             validate_windows_scheduler(archive, entries)
         validate_empty_credentials_directory(archive, entries)

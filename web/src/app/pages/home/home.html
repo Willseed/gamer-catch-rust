@@ -1,0 +1,105 @@
+<main id="main-content">
+  <section class="hero dark-band" aria-labelledby="home-title">
+    <div class="content-width hero-grid">
+      <div>
+        <p class="eyebrow">巴哈排行榜自動整理工具</p>
+        <h1 id="home-title">多款遊戲，<br />一次抓取。</h1>
+        <p class="lead">
+          GamerCatch 會從巴哈姆特找到指定遊戲的排行與人氣，再寫進每個人各自的 Google
+          Sheets；發生異常時還能用 Gmail 通知。
+        </p>
+        <div class="hero-actions">
+          <a class="primary-button" routerLink="/generator">建立設定檔</a>
+          <a class="secondary-button on-dark" routerLink="/guide" fragment="quick-start"
+            >第一次使用教學</a
+          >
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <span class="shape circle"></span>
+        <span class="shape cross"></span>
+        <span class="shape square"></span>
+        <span class="shape triangle"></span>
+        <div class="rank-card">
+          <span>每日資料</span>
+          <strong>排行 + 人氣</strong>
+          <small>寫入 Google Sheets</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="light-band overview" aria-labelledby="overview-title">
+    <div class="content-width">
+      <p class="eyebrow blue-text">為非技術使用者設計</p>
+      <h2 id="overview-title">填完、下載、點兩下執行</h2>
+      <div class="feature-grid">
+        <article>
+          <span class="feature-number">01</span>
+          <h3>支援多遊戲、多帳號</h3>
+          <p>每款遊戲可以對應不同試算表、service account JSON、工作表與多人通知名單。</p>
+        </article>
+        <article>
+          <span class="feature-number">02</span>
+          <h3>設定不離開瀏覽器</h3>
+          <p>產生器只在本機記憶體組合 TOML，不上傳、不保存，也不要求你貼任何 JSON 密鑰內容。</p>
+        </article>
+        <article>
+          <span class="feature-number">03</span>
+          <h3>Windows 定時執行</h3>
+          <p>安裝包附一鍵工作排程腳本，不需管理員權限，每天早上 9 點自動抓取。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="blue-band steps" aria-labelledby="steps-title">
+    <div class="content-width">
+      <p class="eyebrow">三個步驟開始</p>
+      <h2 id="steps-title">今天就完成第一筆資料</h2>
+      <ol class="step-list">
+        <li>
+          <span>1</span>
+          <div>
+            <h3>下載對應版本</h3>
+            <p>選擇 macOS Apple Silicon 或 Windows x64。</p>
+          </div>
+        </li>
+        <li>
+          <span>2</span>
+          <div>
+            <h3>用網頁產生設定</h3>
+            <p>填入遊戲與各自的 Google Sheets 資訊。</p>
+          </div>
+        </li>
+        <li>
+          <span>3</span>
+          <div>
+            <h3>依教學完成授權</h3>
+            <p>放好 JSON、分享試算表，再點兩下開始抓取。</p>
+          </div>
+        </li>
+      </ol>
+      <div class="center-actions">
+        <a class="primary-button white-button" routerLink="/downloads">前往下載</a>
+        <a class="secondary-button on-blue" routerLink="/guide" fragment="prepare-google-sheet"
+          >查看 Google 設定</a
+        >
+      </div>
+    </div>
+  </section>
+
+  <section class="light-band docs-callout" aria-labelledby="docs-title">
+    <div class="content-width callout-grid">
+      <div>
+        <p class="eyebrow blue-text">單一線上說明</p>
+        <h2 id="docs-title">不用再找 PDF 版本</h2>
+        <p>
+          安裝、Google Sheets、Gmail、換遊戲、排程與疑難排解全部集中在網頁，網址中的
+          <code>#章節</code> 能直接分享給需要的人。
+        </p>
+      </div>
+      <a class="primary-button" routerLink="/guide">開啟完整教學</a>
+    </div>
+  </section>
+</main>

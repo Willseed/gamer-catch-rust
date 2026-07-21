@@ -60,6 +60,17 @@ jobs:
             exit 1
           fi
 
+          guide_response="$(mktemp)"
+          trap 'rm -f "$guide_response"' EXIT
+          curl --fail --silent --show-error --location \
+            --retry 30 --retry-delay 10 --retry-all-errors \
+            --output "$guide_response" \
+            "https://gamer.catch.pylot.dev/guide#quick-start"
+          if ! grep --fixed-strings 'data-gamercatch-site="angular-guide"' "$guide_response" > /dev/null; then
+            echo "The online GamerCatch guide is unavailable or is not the expected Angular site." >&2
+            exit 1
+          fi
+
           suspicious_files="$(git ls-files | grep -Ei '(^|/)(credentials?/.*\.json|[^/]*(service[-_]?account|gmail[-_]?oauth|oauth[-_]?client|gmail[-_]?token|credentials?)[^/]*\.json)$' || true)"
           if test -n "$suspicious_files"; then
             echo "Repository contains a possible service-account credential file." >&2
@@ -103,9 +114,7 @@ jobs:
         with:
           name: macos-assets
           if-no-files-found: error
-          path: |
-            dist/GamerCatch-macOS-arm64.zip
-            output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf
+          path: dist/GamerCatch-macOS-arm64.zip
 
   windows:
     name: Package Windows x64
@@ -138,9 +147,7 @@ jobs:
         with:
           name: windows-assets
           if-no-files-found: error
-          path: |
-            dist/GamerCatch-Windows-x64.zip
-            output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf
+          path: dist/GamerCatch-Windows-x64.zip
 
   publish:
     name: Publish GitHub release
@@ -175,22 +182,16 @@ jobs:
           done <<'FILES'
           GamerCatch-macOS-arm64.zip|GamerCatch-macOS-arm64.zip
           GamerCatch-Windows-x64.zip|GamerCatch-Windows-x64.zip
-          GamerCatch_零基礎使用手冊_macOS.pdf|GamerCatch-Beginner-Manual-macOS-zh-TW.pdf
-          GamerCatch_零基礎使用手冊_Windows.pdf|GamerCatch-Beginner-Manual-Windows-zh-TW.pdf
           FILES
 
       - name: Validate release assets
         run: |
           python3 scripts/validate-package.py --platform macos release-ready/GamerCatch-macOS-arm64.zip
           python3 scripts/validate-package.py --platform windows release-ready/GamerCatch-Windows-x64.zip
-          test -s release-ready/GamerCatch-Beginner-Manual-macOS-zh-TW.pdf
-          test -s release-ready/GamerCatch-Beginner-Manual-Windows-zh-TW.pdf
           cd release-ready
           sha256sum \
             GamerCatch-macOS-arm64.zip \
             GamerCatch-Windows-x64.zip \
-            GamerCatch-Beginner-Manual-macOS-zh-TW.pdf \
-            GamerCatch-Beginner-Manual-Windows-zh-TW.pdf \
             > SHA256SUMS.txt
 
       - name: Create GitHub release

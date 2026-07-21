@@ -1,0 +1,61 @@
+<main id="main-content">
+  <section class="page-hero dark-band" aria-labelledby="download-title">
+    <div class="content-width">
+      <p class="eyebrow">最新正式版本</p>
+      <h1 id="download-title">下載 GamerCatch</h1>
+      <p class="lead">下載後解壓縮，不必安裝程式。請依你的電腦選擇版本。</p>
+    </div>
+  </section>
+
+  <section class="light-band downloads" aria-label="作業系統版本">
+    <div class="content-width download-grid">
+      <article class="download-card">
+        <div class="platform-mark mac-mark" aria-hidden="true">●</div>
+        <p class="eyebrow blue-text">Apple Silicon</p>
+        <h2>macOS</h2>
+        <p>適用於 M1、M2、M3、M4、M5 等 Apple 晶片 Mac。首次執行會安裝必要元件。</p>
+        <a class="primary-button" [href]="macUrl">下載 macOS ZIP</a>
+        <a routerLink="/guide" fragment="first-setup-macos" class="guide-link"
+          >查看 macOS 第一次設定</a
+        >
+      </article>
+
+      <article class="download-card">
+        <div class="platform-mark windows-mark" aria-hidden="true">▦</div>
+        <p class="eyebrow blue-text">64 位元</p>
+        <h2>Windows</h2>
+        <p>適用於 Windows 10 或 11 x64。包含無需管理員權限的每日 9 點工作排程安裝腳本。</p>
+        <a class="primary-button" [href]="windowsUrl">下載 Windows ZIP</a>
+        <a routerLink="/guide" fragment="first-setup-windows" class="guide-link"
+          >查看 Windows 第一次設定</a
+        >
+      </article>
+    </div>
+  </section>
+
+  <section class="blue-band next-step" aria-labelledby="next-title">
+    <div class="content-width next-grid">
+      <div>
+        <p class="eyebrow">下載之後</p>
+        <h2 id="next-title">建立你的 config.toml</h2>
+        <p>產生器支援最多 20 個遊戲、不同 Google 帳號與多人通知，不需要碰程式碼。</p>
+      </div>
+      <a class="primary-button white-button" routerLink="/generator">開啟設定產生器</a>
+    </div>
+  </section>
+
+  <section class="light-band integrity" aria-labelledby="integrity-title">
+    <div class="content-width">
+      <h2 id="integrity-title">版本與檔案驗證</h2>
+      <p>
+        每次發布都附 SHA-256 校驗值。若瀏覽器或防毒軟體顯示警告，請先確認你是從此網站連到官方 GitHub
+        Release 下載。
+      </p>
+      <div class="integrity-links">
+        <a [href]="checksumsUrl">下載 SHA256SUMS.txt</a>
+        <a [href]="releaseUrl">查看 GitHub 最新 Release</a>
+        <a routerLink="/guide" fragment="checksums">校驗方式教學</a>
+      </div>
+    </div>
+  </section>
+</main>

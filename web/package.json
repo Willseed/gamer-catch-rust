@@ -1,0 +1,39 @@
+{
+  "name": "gamer-catch-web",
+  "version": "0.2.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "build:cloudflare": "ng build --output-path dist/cloudflare",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "test:ci": "ng test --watch=false"
+  },
+  "private": true,
+  "packageManager": "npm@11.17.0",
+  "dependencies": {
+    "@angular/common": "22.0.7",
+    "@angular/compiler": "22.0.7",
+    "@angular/core": "22.0.7",
+    "@angular/forms": "22.0.7",
+    "@angular/platform-browser": "22.0.7",
+    "@angular/router": "22.0.7",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "22.0.7",
+    "@angular/cli": "22.0.7",
+    "@angular/compiler-cli": "22.0.7",
+    "jsdom": "^28.0.0",
+    "prettier": "^3.8.1",
+    "typescript": "6.0.3",
+    "vitest": "^4.0.8",
+    "wrangler": "4.112.0"
+  },
+  "engines": {
+    "node": ">=24.15.0 <25",
+    "npm": ">=11"
+  }
+}

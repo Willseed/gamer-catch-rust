@@ -1,0 +1,322 @@
+<main id="main-content">
+  <section class="page-hero dark-band" aria-labelledby="generator-title">
+    <div class="content-width">
+      <p class="eyebrow">不用寫程式，也不用上傳密鑰</p>
+      <h1 id="generator-title">設定檔產生器</h1>
+      <p class="lead">
+        依序填入遊戲、試算表與通知設定，再下載
+        <code>config.toml</code>。所有內容只在你的瀏覽器記憶體中處理，不會傳到伺服器。
+      </p>
+      <div class="privacy-note" role="note">
+        <strong>安全提醒：</strong>這裡只填 JSON 的檔名與相對路徑；請勿貼上 service account 或 Gmail
+        OAuth JSON 的內容。
+      </div>
+    </div>
+  </section>
+
+  <form class="generator-form content-width" [formGroup]="form" novalidate>
+    <section class="form-section" formGroupName="bahamut" aria-labelledby="bahamut-heading">
+      <div class="section-heading">
+        <span class="step">1</span>
+        <div>
+          <h2 id="bahamut-heading">巴哈掃描範圍</h2>
+          <p>一般情況保留預設值即可。程式會在這些頁面中一次尋找所有啟用的遊戲。</p>
+        </div>
+      </div>
+      <div class="field-grid compact-grid">
+        <label>
+          <span>分類編號</span>
+          <input type="number" min="1" step="1" formControlName="category" inputmode="numeric" />
+        </label>
+        <label>
+          <span>起始頁</span>
+          <input
+            type="number"
+            min="1"
+            max="200"
+            step="1"
+            formControlName="startPage"
+            inputmode="numeric"
+          />
+        </label>
+        <label>
+          <span>結束頁</span>
+          <input
+            type="number"
+            min="1"
+            max="200"
+            step="1"
+            formControlName="endPage"
+            inputmode="numeric"
+          />
+        </label>
+      </div>
+      <details>
+        <summary>進階掃描設定</summary>
+        <div class="field-grid compact-grid details-content">
+          <label>
+            <span>頁面逾時（毫秒）</span>
+            <input
+              type="number"
+              min="1000"
+              max="120000"
+              step="1000"
+              formControlName="navigationTimeoutMs"
+            />
+          </label>
+          <label>
+            <span>翻頁等待（毫秒）</span>
+            <input type="number" min="0" max="60000" step="100" formControlName="pageDelayMs" />
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" formControlName="headless" />
+            <span>背景執行，不顯示瀏覽器</span>
+          </label>
+        </div>
+        <p class="field-help">第一次執行建議不要勾選，遇到巴哈安全驗證時才能看見並處理。</p>
+      </details>
+    </section>
+
+    <section class="form-section" aria-labelledby="games-heading">
+      <div class="section-heading">
+        <span class="step">2</span>
+        <div>
+          <h2 id="games-heading">遊戲與 Google Sheets</h2>
+          <p>每個遊戲都能使用不同人的 Google 帳號、service account JSON、試算表與通知收件人。</p>
+        </div>
+      </div>
+
+      <div formArrayName="games" class="games-list">
+        @for (game of games.controls; track game; let index = $index) {
+          <article class="game-card" [formGroupName]="index">
+            <header class="game-header">
+              <div>
+                <p class="card-kicker">遊戲 {{ index + 1 }}</p>
+                <h3>{{ game.controls.gameName.value || '尚未命名' }}</h3>
+              </div>
+              <label class="toggle-row strong-toggle">
+                <input type="checkbox" formControlName="enabled" />
+                <span>啟用</span>
+              </label>
+            </header>
+
+            <div class="field-grid">
+              <label class="span-two">
+                <span>遊戲名稱 <b aria-hidden="true">*</b></span>
+                <input
+                  type="text"
+                  formControlName="gameName"
+                  placeholder="例如：夜鴉"
+                  autocomplete="off"
+                />
+                <small>要和巴哈排行榜顯示的名稱一致。</small>
+              </label>
+              <label>
+                <span>工作表名稱</span>
+                <input
+                  type="text"
+                  formControlName="worksheetName"
+                  placeholder="每日排名"
+                  autocomplete="off"
+                />
+              </label>
+              <label>
+                <span>資料起始列</span>
+                <input type="number" min="2" step="1" formControlName="firstDataRow" />
+              </label>
+            </div>
+
+            <label class="toggle-panel">
+              <input type="checkbox" formControlName="writeToGoogleSheets" />
+              <span>
+                <strong>寫入 Google Sheets</strong>
+                <small>剛設定時先關閉；安全測試成功後再開啟。</small>
+              </span>
+            </label>
+
+            <div class="field-grid sheets-fields">
+              <label class="span-two">
+                <span>Google 試算表網址或 ID</span>
+                <input
+                  type="text"
+                  formControlName="spreadsheetId"
+                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                  autocomplete="off"
+                />
+              </label>
+              <label class="span-two">
+                <span>此遊戲的 service account JSON 路徑</span>
+                <input type="text" formControlName="serviceAccountKeyPath" autocomplete="off" />
+                <small
+                  >例如 credentials/person-1-service-account.json。不同帳號可用不同檔案。</small
+                >
+              </label>
+              <label>
+                <span>日期欄位</span>
+                <input type="text" maxlength="3" formControlName="dateColumn" autocomplete="off" />
+              </label>
+              <label>
+                <span>排行欄位</span>
+                <input type="text" maxlength="3" formControlName="rankColumn" autocomplete="off" />
+              </label>
+              <label>
+                <span>人氣欄位</span>
+                <input
+                  type="text"
+                  maxlength="3"
+                  formControlName="popularityColumn"
+                  autocomplete="off"
+                />
+              </label>
+              <label>
+                <span>時區</span>
+                <select formControlName="timezone">
+                  <option value="Asia/Taipei">台北（Asia/Taipei）</option>
+                  <option value="Asia/Tokyo">東京（Asia/Tokyo）</option>
+                  <option value="Asia/Hong_Kong">香港（Asia/Hong_Kong）</option>
+                  <option value="Asia/Singapore">新加坡（Asia/Singapore）</option>
+                  <option value="UTC">UTC</option>
+                </select>
+              </label>
+              <label class="span-two">
+                <span>此遊戲專用通知收件人（選用）</span>
+                <textarea
+                  rows="3"
+                  formControlName="notificationRecipientsText"
+                  placeholder="owner@example.com&#10;backup@example.com"
+                ></textarea>
+                <small>每行或逗號分隔；留白就使用下一節的預設收件人。</small>
+              </label>
+            </div>
+
+            <footer class="card-actions">
+              <button
+                type="button"
+                class="text-button"
+                (click)="duplicateGame(index)"
+                [disabled]="games.length >= maxGames"
+              >
+                複製成新遊戲
+              </button>
+              <button
+                type="button"
+                class="danger-button"
+                (click)="removeGame(index)"
+                [disabled]="games.length === 1"
+              >
+                移除此遊戲
+              </button>
+            </footer>
+          </article>
+        }
+      </div>
+      <button
+        type="button"
+        class="secondary-button add-game"
+        (click)="addGame()"
+        [disabled]="games.length >= maxGames"
+      >
+        ＋ 新增遊戲（{{ games.length }}/{{ maxGames }}）
+      </button>
+    </section>
+
+    <section class="form-section" formGroupName="gmail" aria-labelledby="gmail-heading">
+      <div class="section-heading">
+        <span class="step">3</span>
+        <div>
+          <h2 id="gmail-heading">Gmail 異常通知</h2>
+          <p>抓不到排名、人氣或寫入失敗時寄信。成功執行時不寄信。</p>
+        </div>
+      </div>
+      <label class="toggle-panel prominent-toggle">
+        <input type="checkbox" formControlName="enabled" />
+        <span>
+          <strong>啟用 Gmail 異常通知</strong>
+          <small>完成 Gmail OAuth 授權與測試信前，請保持關閉。</small>
+        </span>
+      </label>
+      @if (form.controls.gmail.controls.enabled.value) {
+        <div class="field-grid gmail-fields">
+          <label>
+            <span>寄件 Gmail 帳號</span>
+            <input
+              type="email"
+              formControlName="senderEmail"
+              placeholder="sender@gmail.com"
+              autocomplete="email"
+            />
+          </label>
+          <label>
+            <span>信件主旨前綴</span>
+            <input type="text" maxlength="60" formControlName="subjectPrefix" autocomplete="off" />
+          </label>
+          <label class="span-two">
+            <span>預設通知收件人</span>
+            <textarea
+              rows="3"
+              formControlName="defaultRecipientsText"
+              placeholder="owner@example.com&#10;backup@example.com"
+            ></textarea>
+            <small>支援多人；每行或逗號分隔，最多 50 個不同地址。</small>
+          </label>
+          <label class="span-two">
+            <span>Gmail OAuth 用戶端 JSON 路徑</span>
+            <input type="text" formControlName="oauthClientSecretPath" autocomplete="off" />
+            <small>這是「電腦版應用程式」OAuth JSON，不是 Sheets service account JSON。</small>
+          </label>
+        </div>
+      }
+    </section>
+
+    <section class="result-section" aria-labelledby="result-heading">
+      <div class="section-heading result-heading">
+        <span class="step">4</span>
+        <div>
+          <h2 id="result-heading">檢查並下載</h2>
+          <p>產生器不會替你上傳或保存任何設定。</p>
+        </div>
+      </div>
+
+      @if (issues().length > 0) {
+        <div class="issue-box" role="alert" aria-labelledby="issues-title">
+          <h3 id="issues-title">還有 {{ issues().length }} 個地方要確認</h3>
+          <ul>
+            @for (issue of issues(); track issueId(issue, $index)) {
+              <li>{{ issue.message }}</li>
+            }
+          </ul>
+        </div>
+      } @else {
+        <div class="ready-box" role="status">
+          <strong>設定格式已通過檢查。</strong> 可以下載 config.toml。
+        </div>
+      }
+
+      <div class="download-actions">
+        <button
+          type="button"
+          class="primary-button"
+          (click)="downloadConfig()"
+          [disabled]="issues().length > 0"
+        >
+          下載 config.toml
+        </button>
+        <button
+          type="button"
+          class="secondary-button on-dark"
+          (click)="copyConfig()"
+          [disabled]="issues().length > 0"
+        >
+          複製內容
+        </button>
+        <a routerLink="/guide" fragment="config-reference" class="inline-link">接著看放置方式</a>
+      </div>
+      <p class="action-message" aria-live="polite">{{ message() }}</p>
+
+      <details class="preview-details">
+        <summary>檢視產生的設定內容</summary>
+        <pre tabindex="0"><code>{{ preview() }}</code></pre>
+      </details>
+    </section>
+  </form>
+</main>

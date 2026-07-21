@@ -293,8 +293,36 @@ jobs:
           .\scripts\package-windows.ps1
           python scripts\validate-package.py --platform windows dist\GamerCatch-Windows-x64.zip
 
+  web:
+    name: Angular 22 (Node.js 24)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, Node.js 24
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0, Node.js 24
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Test configuration generator and pages
+        run: npm run test:ci
+
+      - name: Build Cloudflare Pages site
+        run: npm run build:cloudflare
+
   docs-and-scripts:
-    name: PDF and scripts
+    name: Scripts and online-guide policy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -306,32 +334,16 @@ jobs:
         run: |
           bash -n scripts/package-macos.sh scripts/*.command scripts/*.sh
           shellcheck scripts/package-macos.sh scripts/*.command scripts/*.sh
-          python3 -m py_compile scripts/generate-manual.py scripts/create-release-zip.py scripts/validate-package.py
+          python3 -m py_compile scripts/create-release-zip.py scripts/validate-package.py
 
-      - name: Validate PDF manuals
+      - name: Require the website as the only manual
         run: |
-          if ! command -v pdfinfo >/dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y poppler-utils
-          fi
-          manual_version="$(cargo metadata --locked --no-deps --format-version 1 | python3 -c 'import json, sys; print(json.load(sys.stdin)["packages"][0]["version"])')"
-          test "$(pdfinfo output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf | awk '/^Pages:/ { print $2 }')" = "21"
-          test "$(pdfinfo output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf | awk '/^Pages:/ { print $2 }')" = "22"
-          for manual in output/pdf/*.pdf; do
-            pdftotext "$manual" - | grep -F "零基礎設定與操作手冊"
-            pdftotext "$manual" - | grep -F "版本 $manual_version"
-            pdftotext "$manual" - | grep -F "service account"
-            pdftotext "$manual" - | grep -F "更換遊戲時要修改與確認什麼"
-            pdftotext "$manual" - | grep -F "Gmail API"
-            pdftotext "$manual" - | grep -F "gmail.send"
-            pdftotext "$manual" - | grep -F "Gmail_首次授權"
-          done
-          if pdftotext output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf - | grep -F ".ps1"; then
-            echo "macOS manual must not contain Windows PowerShell instructions." >&2
+          test -z "$(git ls-files '*.pdf')" || {
+            echo "PDF manuals are retired; documentation must live under web/." >&2
             exit 1
-          fi
-          pdftotext output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf - | grep -F "每天 09:00 自動抓取"
-          pdftotext output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf - | grep -F "3_安裝每天早上9點自動抓取.cmd"
+          }
+          test ! -e scripts/generate-manual.py
+          grep -F 'https://gamer.catch.pylot.dev/guide#quick-start' 使用說明.txt
 
       - name: Reject committed credentials
         run: |

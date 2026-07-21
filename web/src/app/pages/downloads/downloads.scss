@@ -1,0 +1,94 @@
+:host {
+  display: block;
+}
+.page-hero {
+  padding-block: clamp(4rem, 9vw, 7rem);
+}
+.downloads,
+.next-step,
+.integrity {
+  padding-block: clamp(4rem, 8vw, 7rem);
+}
+.download-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+.download-card {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border: 2px solid #c5cbd3;
+  border-top: 6px solid var(--blue);
+  border-radius: var(--radius-card);
+  background: #f5f7fa;
+}
+.download-card h2 {
+  margin-block: 0.25rem 0.75rem;
+}
+.download-card p:not(.eyebrow) {
+  flex: 1;
+  color: var(--muted-on-light);
+}
+.download-card .primary-button {
+  margin-top: 1.5rem;
+}
+.platform-mark {
+  display: grid;
+  width: 4rem;
+  height: 4rem;
+  place-items: center;
+  margin-bottom: 1.5rem;
+  border-radius: 50%;
+  background: var(--surface-dark);
+  color: #fff;
+  font-size: 2rem;
+}
+.windows-mark {
+  border-radius: var(--radius-card);
+}
+.guide-link {
+  min-height: 2.75rem;
+  margin-top: 1rem;
+  color: var(--blue-active);
+  font-weight: 800;
+}
+.next-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2rem;
+  align-items: center;
+}
+.next-grid p:not(.eyebrow) {
+  max-width: 45rem;
+  color: #e8f4ff;
+}
+.white-button {
+  background: #fff;
+  color: var(--blue-active);
+  white-space: nowrap;
+}
+.integrity p {
+  max-width: 55rem;
+  color: var(--muted-on-light);
+}
+.integrity-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  margin-top: 1.5rem;
+}
+.integrity-links a {
+  color: var(--blue-active);
+  font-weight: 800;
+}
+@media (max-width: 720px) {
+  .download-grid,
+  .next-grid {
+    grid-template-columns: 1fr;
+  }
+  .next-grid .primary-button {
+    justify-self: start;
+  }
+}

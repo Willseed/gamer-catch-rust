@@ -94,7 +94,8 @@ function Write-ScheduledFailureLog {
             -StandardError $Message
     }
     catch {
-        # Task Scheduler will still retain the nonzero process exit code.
+        $LogError = $_.Exception.Message
+        [Console]::Error.WriteLine("Failed to write scheduled failure log: $LogError")
     }
 }
 
@@ -190,10 +191,10 @@ function Install-GamerCatchScheduledTask {
         throw "The scheduled task was not registered with limited interactive permissions."
     }
 
-    Write-Host "Scheduled task installed or updated."
-    Write-Host "Task name: $TaskName"
-    Write-Host "Next run: $($TaskInfo.NextRunTime.ToString('yyyy-MM-dd HH:mm:ss'))"
-    Write-Host "No administrator privileges or stored Windows password are used."
+    Write-Output "Scheduled task installed or updated."
+    Write-Output "Task name: $TaskName"
+    Write-Output "Next run: $($TaskInfo.NextRunTime.ToString('yyyy-MM-dd HH:mm:ss'))"
+    Write-Output "No administrator privileges or stored Windows password are used."
 }
 
 if ($ScheduledRun) {

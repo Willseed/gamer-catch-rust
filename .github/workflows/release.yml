@@ -143,7 +143,7 @@ jobs:
             output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf
 
   publish:
-    name: Publish GitHub prerelease
+    name: Publish GitHub release
     needs: [macos, windows]
     runs-on: ubuntu-latest
     permissions:
@@ -193,7 +193,7 @@ jobs:
             GamerCatch-Beginner-Manual-Windows-zh-TW.pdf \
             > SHA256SUMS.txt
 
-      - name: Create GitHub prerelease
+      - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -201,5 +201,5 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --title "GamerCatch $GITHUB_REF_NAME（腳本版預覽）" \
             --notes-file "packaging/release-notes-$GITHUB_REF_NAME.md" \
-            --prerelease \
+            --latest \
             --verify-tag

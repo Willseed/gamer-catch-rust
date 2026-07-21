@@ -60,15 +60,15 @@ jobs:
             exit 1
           fi
 
-          suspicious_files="$(git ls-files | grep -Ei '(^|/)(credentials?/.*\.json|[^/]*service[-_]?account[^/]*\.json|[^/]*credentials?[^/]*\.json)$' || true)"
+          suspicious_files="$(git ls-files | grep -Ei '(^|/)(credentials?/.*\.json|[^/]*(service[-_]?account|gmail[-_]?oauth|oauth[-_]?client|gmail[-_]?token|credentials?)[^/]*\.json)$' || true)"
           if test -n "$suspicious_files"; then
             echo "Repository contains a possible service-account credential file." >&2
             printf '%s\n' "$suspicious_files" >&2
             exit 1
           fi
           while IFS= read -r json_file; do
-            if grep -Eq '"type"[[:space:]]*:[[:space:]]*"service_account"' "$json_file"; then
-              echo "Tracked JSON looks like a Google service-account key: $json_file" >&2
+            if grep -Eq '("type"[[:space:]]*:[[:space:]]*"service_account")|("(client_secret|private_key|refresh_token|access_token)"[[:space:]]*:[[:space:]]*"[^"]+")' "$json_file"; then
+              echo "Tracked JSON looks like a Google credential or OAuth token: $json_file" >&2
               exit 1
             fi
           done < <(git ls-files '*.json')

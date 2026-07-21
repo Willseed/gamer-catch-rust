@@ -38,5 +38,6 @@ fi
 echo
 echo "設定檔、credentials 資料夾與零基礎手冊已開啟。"
 echo "填寫並儲存後，請雙擊「2_開始抓取.command」。"
+echo "要啟用異常信件時，再依手冊填寫 Gmail 設定並雙擊「Gmail_首次授權.command」。"
 printf '\n按 Return 關閉視窗…'
 IFS= read -r _ || true

@@ -12,6 +12,19 @@ page_delay_ms = 1000
 # false 會顯示瀏覽器，遇到巴哈安全驗證時較可靠。
 headless = false
 
+# ===== Gmail 異常通知（選用） =====
+# 完成 OAuth 設定與測試信前請保持 false；成功執行與 dry-run 都不會寄信。
+[gmail_notifications]
+enabled = false
+# 必須與 Gmail 首次授權時登入的寄件帳號相同。
+sender_email = "請填入寄件Gmail帳號"
+# 可填多人，例如 ["owner@example.com", "backup@example.com"]。
+default_recipients = ["請填入預設收件電子郵件"]
+# 這是「電腦版應用程式」OAuth JSON，不是 Sheets service account JSON。
+oauth_client_secret_path = "credentials/gmail-oauth-client.json"
+# 通常不需要修改。
+subject_prefix = "[GamerCatch]"
+
 # ===== 遊戲 1 =====
 [[games]]
 enabled = true
@@ -28,6 +41,8 @@ first_data_row = 2
 date_column = "A"
 rank_column = "B"
 popularity_column = "C"
+# 留空會使用 default_recipients；要只通知此遊戲的負責人就在中括號內填地址。
+notification_recipients = []
 
 # ===== 遊戲 2（需要時把 enabled 改成 true 並填完） =====
 [[games]]
@@ -42,6 +57,7 @@ first_data_row = 2
 date_column = "A"
 rank_column = "B"
 popularity_column = "C"
+notification_recipients = []
 
 # ===== 遊戲 3（需要時把 enabled 改成 true 並填完） =====
 [[games]]
@@ -56,3 +72,4 @@ first_data_row = 2
 date_column = "A"
 rank_column = "B"
 popularity_column = "C"
+notification_recipients = []

@@ -45,6 +45,7 @@ pub struct RankingMetrics {
 pub struct GameScrapeResult {
     pub game_name: String,
     pub metrics: Option<RankingMetrics>,
+    pub failure_detail: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -96,6 +97,7 @@ async fn scrape_with_browser(
 ) -> Result<Vec<GameScrapeResult>> {
     let page = browser.new_page().await.context("無法建立瀏覽器頁面")?;
     let mut results = vec![None; config.games.len()];
+    let mut failures = vec![None; config.games.len()];
     let active_count = config.active_games().count();
 
     for page_number in config.bahamut.start_page..=config.bahamut.end_page {
@@ -161,10 +163,19 @@ async fn scrape_with_browser(
             &raw_cards,
             &config.games,
             &mut results,
+            &mut failures,
             page_number,
             &source_url,
         )?;
-        if results.iter().flatten().count() == active_count {
+        let completed_count = config
+            .games
+            .iter()
+            .enumerate()
+            .filter(|(index, game)| {
+                game.enabled && (results[*index].is_some() || failures[*index].is_some())
+            })
+            .count();
+        if completed_count == active_count {
             break;
         }
 
@@ -177,10 +188,12 @@ async fn scrape_with_browser(
         .games
         .iter()
         .zip(results)
-        .filter(|(game, _)| game.enabled)
-        .map(|(game, metrics)| GameScrapeResult {
+        .zip(failures)
+        .filter(|((game, _), _)| game.enabled)
+        .map(|((game, metrics), failure_detail)| GameScrapeResult {
             game_name: game.game_name.trim().to_owned(),
             metrics,
+            failure_detail,
         })
         .collect())
 }
@@ -189,25 +202,39 @@ fn record_page_matches(
     cards: &[RawCard],
     games: &[GameConfig],
     results: &mut [Option<RankingMetrics>],
+    failures: &mut [Option<String>],
     page_number: u32,
     source_url: &str,
 ) -> Result<()> {
     ensure!(
-        games.len() == results.len(),
+        games.len() == results.len() && games.len() == failures.len(),
         "內部錯誤：遊戲設定與抓取結果數量不一致"
     );
-    for (game, result) in games.iter().zip(results.iter_mut()) {
-        if !game.enabled || result.is_some() {
+    for ((game, result), failure) in games
+        .iter()
+        .zip(results.iter_mut())
+        .zip(failures.iter_mut())
+    {
+        if !game.enabled || result.is_some() || failure.is_some() {
             continue;
         }
-        if let Some((rank, popularity)) = select_game(cards, game.game_name.trim())? {
-            *result = Some(RankingMetrics {
-                game_name: game.game_name.trim().to_owned(),
-                rank,
-                popularity,
-                page: page_number,
-                source_url: source_url.to_owned(),
-            });
+        let game_name = game.game_name.trim();
+        match select_game(cards, game_name) {
+            Ok(Some((rank, popularity))) => {
+                *result = Some(RankingMetrics {
+                    game_name: game_name.to_owned(),
+                    rank,
+                    popularity,
+                    page: page_number,
+                    source_url: source_url.to_owned(),
+                });
+            }
+            Ok(None) => {}
+            Err(error) => {
+                *failure = Some(format!(
+                    "遊戲「{game_name}」在 page={page_number} 的排行／人氣解析失敗：{error:#}"
+                ));
+            }
         }
     }
     Ok(())
@@ -313,7 +340,7 @@ fn select_game(cards: &[RawCard], game_name: &str) -> Result<Option<(u32, u64)>>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{BahamutConfig, GameConfig};
+    use crate::config::{BahamutConfig, GameConfig, GmailNotificationsConfig};
     use std::path::PathBuf;
 
     fn game(name: &str) -> GameConfig {
@@ -329,6 +356,7 @@ mod tests {
             date_column: "A".to_owned(),
             rank_column: "B".to_owned(),
             popularity_column: "C".to_owned(),
+            notification_recipients: Vec::new(),
         }
     }
 
@@ -344,6 +372,7 @@ mod tests {
                 page_delay_ms: 0,
                 headless: true,
             },
+            gmail_notifications: GmailNotificationsConfig::default(),
             games: vec![game("夜鴉"), game("另一款遊戲")],
             loaded_from_legacy: false,
         }
@@ -392,14 +421,43 @@ mod tests {
     }
 
     #[test]
-    fn records_multiple_games_in_config_order() {
+    fn records_game_specific_metric_errors_without_stopping_other_games() {
         let config = test_config();
-        let cards = vec![card("另一款遊戲", "8", "200"), card("夜鴉", "42", "9876")];
+        let cards = vec![
+            card("夜鴉", "不是數字", "9876"),
+            card("另一款遊戲", "8", "200"),
+        ];
         let mut results = vec![None; config.games.len()];
+        let mut failures = vec![None; config.games.len()];
         record_page_matches(
             &cards,
             &config.games,
             &mut results,
+            &mut failures,
+            2,
+            "https://forum.gamer.com.tw/?c=30&page=2",
+        )
+        .unwrap();
+
+        assert!(results[0].is_none());
+        assert!(failures[0].as_deref().is_some_and(|detail| {
+            detail.contains("夜鴉") && detail.contains("無效排行數值")
+        }));
+        assert_eq!(results[1].as_ref().map(|metrics| metrics.rank), Some(8));
+        assert!(failures[1].is_none());
+    }
+
+    #[test]
+    fn records_multiple_games_in_config_order() {
+        let config = test_config();
+        let cards = vec![card("另一款遊戲", "8", "200"), card("夜鴉", "42", "9876")];
+        let mut results = vec![None; config.games.len()];
+        let mut failures = vec![None; config.games.len()];
+        record_page_matches(
+            &cards,
+            &config.games,
+            &mut results,
+            &mut failures,
             2,
             "https://forum.gamer.com.tw/?c=30&page=2",
         )
@@ -411,6 +469,7 @@ mod tests {
             .map(|metrics| metrics.game_name)
             .collect::<Vec<_>>();
         assert_eq!(names, vec!["夜鴉", "另一款遊戲"]);
+        assert!(failures.into_iter().all(|failure| failure.is_none()));
     }
 
     #[test]

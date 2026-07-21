@@ -8,5 +8,9 @@ __pycache__/
 /credentials/
 /service-account*.json
 /credentials*.json
+/gmail-oauth*.json
+/gmail-token*.json
+/oauth-client*.json
+/oauth-token*.json
 *.log
 .DS_Store

@@ -4,11 +4,14 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail, ensure};
 use chrono_tz::Tz;
+use lettre::Address;
 use serde::Deserialize;
 use unicode_normalization::UnicodeNormalization;
 use url::Url;
 
 const MAX_GAMES: usize = 20;
+const MAX_NOTIFICATION_RECIPIENTS: usize = 50;
+const MAX_SUBJECT_PREFIX_CHARS: usize = 60;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -16,6 +19,8 @@ pub struct AppConfig {
     #[serde(default = "default_schema_version")]
     pub schema_version: u32,
     pub bahamut: BahamutConfig,
+    #[serde(default)]
+    pub gmail_notifications: GmailNotificationsConfig,
     pub games: Vec<GameConfig>,
     #[serde(skip)]
     pub loaded_from_legacy: bool,
@@ -45,6 +50,18 @@ pub struct GameConfig {
     pub rank_column: String,
     #[serde(default = "default_popularity_column")]
     pub popularity_column: String,
+    #[serde(default)]
+    pub notification_recipients: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct GmailNotificationsConfig {
+    pub enabled: bool,
+    pub sender_email: String,
+    pub default_recipients: Vec<String>,
+    pub oauth_client_secret_path: PathBuf,
+    pub subject_prefix: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -160,6 +177,26 @@ fn default_popularity_column() -> String {
     "C".to_owned()
 }
 
+fn default_gmail_oauth_client_secret_path() -> PathBuf {
+    PathBuf::from("credentials/gmail-oauth-client.json")
+}
+
+fn default_gmail_subject_prefix() -> String {
+    "[GamerCatch]".to_owned()
+}
+
+impl Default for GmailNotificationsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            sender_email: String::new(),
+            default_recipients: Vec::new(),
+            oauth_client_secret_path: default_gmail_oauth_client_secret_path(),
+            subject_prefix: default_gmail_subject_prefix(),
+        }
+    }
+}
+
 impl AppConfig {
     pub fn load(path: &Path) -> Result<Self> {
         let contents = fs::read_to_string(path)
@@ -184,6 +221,19 @@ impl AppConfig {
         config.validate()?;
 
         let base = path.parent().unwrap_or_else(|| Path::new("."));
+        if !config
+            .gmail_notifications
+            .oauth_client_secret_path
+            .as_os_str()
+            .is_empty()
+            && config
+                .gmail_notifications
+                .oauth_client_secret_path
+                .is_relative()
+        {
+            config.gmail_notifications.oauth_client_secret_path =
+                base.join(&config.gmail_notifications.oauth_client_secret_path);
+        }
         for game in &mut config.games {
             if game.enabled && game.write_to_google_sheets {
                 game.spreadsheet_id = normalize_spreadsheet_id(&game.spreadsheet_id)?;
@@ -209,6 +259,7 @@ impl AppConfig {
             self.schema_version
         );
         self.validate_bahamut()?;
+        self.validate_gmail_notifications()?;
         ensure!(!self.games.is_empty(), "至少需要一個 [[games]] 遊戲區塊");
         ensure!(
             self.games.len() <= MAX_GAMES,
@@ -281,6 +332,68 @@ impl AppConfig {
         Ok(())
     }
 
+    fn validate_gmail_notifications(&self) -> Result<()> {
+        let gmail = &self.gmail_notifications;
+        if !gmail.enabled {
+            return Ok(());
+        }
+
+        validate_email(&gmail.sender_email, "gmail_notifications.sender_email")?;
+        ensure!(
+            !gmail.oauth_client_secret_path.as_os_str().is_empty(),
+            "gmail_notifications.oauth_client_secret_path 不可為空"
+        );
+        ensure!(
+            !gmail.subject_prefix.trim().is_empty(),
+            "gmail_notifications.subject_prefix 不可為空"
+        );
+        ensure!(
+            gmail.subject_prefix == gmail.subject_prefix.trim(),
+            "gmail_notifications.subject_prefix 前後不可有空白"
+        );
+        ensure!(
+            gmail.subject_prefix.chars().count() <= MAX_SUBJECT_PREFIX_CHARS,
+            "gmail_notifications.subject_prefix 最多 {MAX_SUBJECT_PREFIX_CHARS} 個字"
+        );
+        ensure!(
+            !gmail.subject_prefix.chars().any(char::is_control),
+            "gmail_notifications.subject_prefix 不可包含換行或控制字元"
+        );
+
+        validate_recipient_list(
+            &gmail.default_recipients,
+            "gmail_notifications.default_recipients",
+        )?;
+        let mut all_recipients = HashSet::new();
+        for recipient in &gmail.default_recipients {
+            all_recipients.insert(recipient.to_ascii_lowercase());
+        }
+        for game in self.active_games() {
+            validate_recipient_list(
+                &game.notification_recipients,
+                &format!("遊戲「{}」的 notification_recipients", game.game_name),
+            )?;
+            let recipients = if game.notification_recipients.is_empty() {
+                &gmail.default_recipients
+            } else {
+                &game.notification_recipients
+            };
+            ensure!(
+                !recipients.is_empty(),
+                "遊戲「{}」沒有通知收件人；請填 notification_recipients 或 gmail_notifications.default_recipients",
+                game.game_name
+            );
+            for recipient in recipients {
+                all_recipients.insert(recipient.to_ascii_lowercase());
+            }
+        }
+        ensure!(
+            all_recipients.len() <= MAX_NOTIFICATION_RECIPIENTS,
+            "Gmail 通知最多支援 {MAX_NOTIFICATION_RECIPIENTS} 個不同收件人"
+        );
+        Ok(())
+    }
+
     fn validate_bahamut(&self) -> Result<()> {
         let base_url =
             Url::parse(self.bahamut.base_url.trim()).context("bahamut.base_url 不是有效網址")?;
@@ -332,6 +445,7 @@ impl LegacyConfig {
         AppConfig {
             schema_version: 2,
             bahamut: self.bahamut,
+            gmail_notifications: GmailNotificationsConfig::default(),
             games: vec![GameConfig {
                 enabled: true,
                 game_name: self.game.name,
@@ -344,10 +458,37 @@ impl LegacyConfig {
                 date_column: self.google_sheets.columns.date,
                 rank_column: self.google_sheets.columns.rank,
                 popularity_column: self.google_sheets.columns.popularity,
+                notification_recipients: Vec::new(),
             }],
             loaded_from_legacy: true,
         }
     }
+}
+
+fn validate_email(value: &str, field: &str) -> Result<()> {
+    ensure!(!value.is_empty(), "{field} 不可為空");
+    ensure!(value == value.trim(), "{field} 前後不可有空白");
+    ensure!(
+        value.parse::<Address>().is_ok(),
+        "{field} 不是有效的電子郵件地址：{value}"
+    );
+    Ok(())
+}
+
+fn validate_recipient_list(recipients: &[String], field: &str) -> Result<()> {
+    ensure!(
+        recipients.len() <= MAX_NOTIFICATION_RECIPIENTS,
+        "{field} 最多 {MAX_NOTIFICATION_RECIPIENTS} 個地址"
+    );
+    let mut unique = HashSet::new();
+    for recipient in recipients {
+        validate_email(recipient, field)?;
+        ensure!(
+            unique.insert(recipient.to_ascii_lowercase()),
+            "{field} 有重複的電子郵件地址：{recipient}"
+        );
+    }
+    Ok(())
 }
 
 fn validate_google_game(game: &GameConfig) -> Result<()> {
@@ -444,6 +585,7 @@ mod tests {
             date_column: "A".to_owned(),
             rank_column: "B".to_owned(),
             popularity_column: "C".to_owned(),
+            notification_recipients: Vec::new(),
         }
     }
 
@@ -459,12 +601,23 @@ mod tests {
                 page_delay_ms: 0,
                 headless: true,
             },
+            gmail_notifications: GmailNotificationsConfig::default(),
             games: vec![
                 game("夜鴉", "account-a.json", "sheet-a"),
                 game("另一款遊戲", "account-b.json", "sheet-b"),
             ],
             loaded_from_legacy: false,
         }
+    }
+
+    fn enable_gmail(config: &mut AppConfig) {
+        config.gmail_notifications = GmailNotificationsConfig {
+            enabled: true,
+            sender_email: "alerts@example.com".to_owned(),
+            default_recipients: vec!["owner@example.com".to_owned()],
+            oauth_client_secret_path: PathBuf::from("gmail-oauth-client.json"),
+            subject_prefix: "[GamerCatch]".to_owned(),
+        };
     }
 
     #[test]
@@ -475,6 +628,51 @@ mod tests {
             config.games[0].service_account_key_path,
             config.games[1].service_account_key_path
         );
+    }
+
+    #[test]
+    fn accepts_default_and_per_game_notification_recipients() {
+        let mut config = valid_config();
+        enable_gmail(&mut config);
+        config.games[0].notification_recipients = vec![
+            "person-one@example.com".to_owned(),
+            "backup@example.com".to_owned(),
+        ];
+        config.validate().unwrap();
+    }
+
+    #[test]
+    fn gmail_enabled_requires_each_active_game_to_have_a_recipient() {
+        let mut config = valid_config();
+        enable_gmail(&mut config);
+        config.gmail_notifications.default_recipients.clear();
+        config.games[0].notification_recipients = vec!["person-one@example.com".to_owned()];
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn rejects_duplicate_and_header_injection_email_addresses() {
+        let mut duplicate = valid_config();
+        enable_gmail(&mut duplicate);
+        duplicate.gmail_notifications.default_recipients = vec![
+            "owner@example.com".to_owned(),
+            "OWNER@example.com".to_owned(),
+        ];
+        assert!(duplicate.validate().is_err());
+
+        let mut injected = valid_config();
+        enable_gmail(&mut injected);
+        injected.gmail_notifications.sender_email =
+            "alerts@example.com\r\nBcc: attacker@example.com".to_owned();
+        assert!(injected.validate().is_err());
+    }
+
+    #[test]
+    fn disabled_gmail_allows_unfinished_placeholders() {
+        let mut config = valid_config();
+        config.gmail_notifications.sender_email = "請填入寄件帳號".to_owned();
+        config.gmail_notifications.default_recipients = vec!["請填入收件帳號".to_owned()];
+        config.validate().unwrap();
     }
 
     #[test]
@@ -560,6 +758,7 @@ mod tests {
             date_column: String::new(),
             rank_column: String::new(),
             popularity_column: String::new(),
+            notification_recipients: Vec::new(),
         };
         config.validate().unwrap();
     }
@@ -603,6 +802,37 @@ worksheet_name = "每日排名"
         assert_eq!(
             config.games[1].service_account_key_path,
             directory.path().join("account-b.json")
+        );
+    }
+
+    #[test]
+    fn resolves_gmail_oauth_path_relative_to_config_file() {
+        let directory = tempfile::tempdir().unwrap();
+        let config_path = directory.path().join("settings.toml");
+        fs::write(
+            &config_path,
+            r#"
+schema_version = 2
+
+[bahamut]
+
+[gmail_notifications]
+enabled = true
+sender_email = "alerts@example.com"
+default_recipients = ["owner@example.com"]
+oauth_client_secret_path = "credentials/gmail-oauth-client.json"
+
+[[games]]
+game_name = "夜鴉"
+write_to_google_sheets = false
+"#,
+        )
+        .unwrap();
+
+        let config = AppConfig::load(&config_path).unwrap();
+        assert_eq!(
+            config.gmail_notifications.oauth_client_secret_path,
+            directory.path().join("credentials/gmail-oauth-client.json")
         );
     }
 
@@ -674,5 +904,6 @@ popularity = "C"
         assert!(config.loaded_from_legacy);
         assert_eq!(config.games.len(), 1);
         assert!(!config.games[0].write_to_google_sheets);
+        assert!(!config.gmail_notifications.enabled);
     }
 }

@@ -119,11 +119,13 @@ cp "$PROJECT_DIR/使用說明.txt" "$OUTPUT_DIR/"
 cp "$MANUAL_PATH" "$OUTPUT_DIR/"
 cp "$PROJECT_DIR/scripts/1_首次設定.command" "$OUTPUT_DIR/"
 cp "$PROJECT_DIR/scripts/2_開始抓取.command" "$OUTPUT_DIR/"
+cp "$PROJECT_DIR/scripts/Gmail_首次授權.command" "$OUTPUT_DIR/"
 cp -R "$DRIVER_DIR" "$OUTPUT_DIR/playwright-driver"
 chmod +x \
   "$OUTPUT_DIR/GamerCatch" \
   "$OUTPUT_DIR/1_首次設定.command" \
   "$OUTPUT_DIR/2_開始抓取.command" \
+  "$OUTPUT_DIR/Gmail_首次授權.command" \
   "$OUTPUT_DIR/playwright-driver/node"
 
 if [[ ! -x "$OUTPUT_DIR/playwright-driver/node" || ! -f "$OUTPUT_DIR/playwright-driver/package/cli.js" ]]; then

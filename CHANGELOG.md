@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 - 2026-07-21
+
+- 新增 Gmail API 異常通知：巴哈抓取、排行／人氣解析及 Google Sheets 更新未完成時寄信，成功與 dry-run 不寄信。
+- 使用 Desktop OAuth 2.0、PKCE、隨機 loopback port 與最小 `gmail.send` 權限；refresh token 存入 macOS Keychain／Windows Credential Manager。
+- 支援全域預設及每個遊戲各自的多位收件人；每位收件者收到獨立彙整信，不會看到其他人的地址或無關遊戲錯誤。
+- 單一遊戲的排行／人氣格式異常時會記錄該遊戲失敗並繼續處理其他遊戲，不再中止整批更新。
+- macOS／Windows 發行包新增可雙擊的 Gmail 首次授權及測試信腳本，正常執行與 Windows 排程不會互動開啟授權頁。
+- 更新安全範例 TOML、README、文字說明、兩平台零基礎 PDF 手冊、CI 與 ZIP 驗證。
+
 ## 0.1.2 - 2026-07-21
 
 - 修正 Windows 排程安裝成功後，繁體中文訊息尾端被 `cmd.exe` 誤判為指令並顯示亂碼的問題。

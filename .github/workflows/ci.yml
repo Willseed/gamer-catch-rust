@@ -80,6 +80,8 @@ jobs:
           $cmdOutputPath = Join-Path $testRoot 'cmd-output.txt'
           $runnerEntry = Join-Path $testRoot 'runner.cmd'
           $runnerOutputPath = Join-Path $testRoot 'runner-output.txt'
+          $gmailEntry = Join-Path $testRoot 'gmail.cmd'
+          $gmailOutputPath = Join-Path $testRoot 'gmail-output.txt'
           try {
             New-Item -ItemType Directory -Path $testRoot | Out-Null
             New-Item -ItemType Directory -Path (Join-Path $testRoot 'credentials') | Out-Null
@@ -91,6 +93,9 @@ jobs:
                   Console.WriteLine("scheduled-test");
                   if (args.Length == 2 && args[0] == "--config" && args[1].EndsWith("config.toml")) {
                       return 7;
+                  }
+                  if (args.Length == 3 && args[0] == "--config" && args[1].EndsWith("config.toml") && args[2] == "--authorize-gmail") {
+                      return 9;
                   }
                   return 8;
               }
@@ -105,11 +110,13 @@ jobs:
             Copy-Item -LiteralPath '.\scripts\install-windows-task.ps1' -Destination $installer
             $entrySource = @(Get-ChildItem -LiteralPath '.\scripts' -Filter '3_*.cmd')
             $runnerSource = @(Get-ChildItem -LiteralPath '.\scripts' -Filter '2_*.cmd')
-            if ($entrySource.Count -ne 1 -or $runnerSource.Count -ne 1) {
-              throw 'Expected exactly one numbered CMD source for the runner and scheduler.'
+            $gmailSource = Get-Item -LiteralPath '.\scripts\Gmail_首次授權.cmd'
+            if ($entrySource.Count -ne 1 -or $runnerSource.Count -ne 1 -or -not $gmailSource) {
+              throw 'Expected exactly one runner, scheduler, and Gmail authorizer CMD source.'
             }
             Copy-Item -LiteralPath $entrySource[0].FullName -Destination $entry
             Copy-Item -LiteralPath $runnerSource[0].FullName -Destination $runnerEntry
+            Copy-Item -LiteralPath $gmailSource.FullName -Destination $gmailEntry
 
             $windowsPowerShell = Join-Path $PSHOME 'powershell.exe'
             $utf8Strict = New-Object System.Text.UTF8Encoding($false, $true)
@@ -143,6 +150,28 @@ jobs:
               throw "The double-click runner omitted its Traditional Chinese failure output: $runnerOutput"
             }
             Write-Output $runnerOutput
+
+            Push-Location $testRoot
+            try {
+              & $env:ComSpec /D /C 'call "gmail.cmd" --no-pause < nul > gmail-output.txt 2>&1'
+              $gmailExitCode = $LASTEXITCODE
+              $global:LASTEXITCODE = 0
+            }
+            finally {
+              Pop-Location
+            }
+            if ($gmailExitCode -ne 9) {
+              throw "The Gmail authorizer returned $gmailExitCode instead of 9."
+            }
+            $gmailOutput = $utf8Strict.GetString([System.IO.File]::ReadAllBytes($gmailOutputPath))
+            if ($gmailOutput.Contains([char]0xFFFD) -or
+                $gmailOutput -match '(?i)is not recognized as an internal or external command') {
+              throw "The Gmail authorizer produced corrupt output: $gmailOutput"
+            }
+            if (-not $gmailOutput.Contains('last-gmail-authorization.log')) {
+              throw "The Gmail authorizer omitted its failure log guidance: $gmailOutput"
+            }
+            Write-Output $gmailOutput
 
             Push-Location $testRoot
             try {
@@ -277,13 +306,16 @@ jobs:
             sudo apt-get install -y poppler-utils
           fi
           manual_version="$(cargo metadata --locked --no-deps --format-version 1 | python3 -c 'import json, sys; print(json.load(sys.stdin)["packages"][0]["version"])')"
-          test "$(pdfinfo output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf | awk '/^Pages:/ { print $2 }')" = "18"
-          test "$(pdfinfo output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf | awk '/^Pages:/ { print $2 }')" = "19"
+          test "$(pdfinfo output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf | awk '/^Pages:/ { print $2 }')" = "21"
+          test "$(pdfinfo output/pdf/GamerCatch_零基礎使用手冊_Windows.pdf | awk '/^Pages:/ { print $2 }')" = "22"
           for manual in output/pdf/*.pdf; do
             pdftotext "$manual" - | grep -F "零基礎設定與操作手冊"
             pdftotext "$manual" - | grep -F "版本 $manual_version"
             pdftotext "$manual" - | grep -F "service account"
             pdftotext "$manual" - | grep -F "更換遊戲時要修改與確認什麼"
+            pdftotext "$manual" - | grep -F "Gmail API"
+            pdftotext "$manual" - | grep -F "gmail.send"
+            pdftotext "$manual" - | grep -F "Gmail_首次授權"
           done
           if pdftotext output/pdf/GamerCatch_零基礎使用手冊_macOS.pdf - | grep -F ".ps1"; then
             echo "macOS manual must not contain Windows PowerShell instructions." >&2
@@ -294,15 +326,15 @@ jobs:
 
       - name: Reject committed credentials
         run: |
-          suspicious_files="$(git ls-files | grep -Ei '(^|/)(credentials?/.*\.json|[^/]*service[-_]?account[^/]*\.json|[^/]*credentials?[^/]*\.json)$' || true)"
+          suspicious_files="$(git ls-files | grep -Ei '(^|/)(credentials?/.*\.json|[^/]*(service[-_]?account|gmail[-_]?oauth|oauth[-_]?client|gmail[-_]?token|credentials?)[^/]*\.json)$' || true)"
           if test -n "$suspicious_files"; then
             echo "Repository contains a possible service-account credential file." >&2
             printf '%s\n' "$suspicious_files" >&2
             exit 1
           fi
           while IFS= read -r json_file; do
-            if grep -Eq '"type"[[:space:]]*:[[:space:]]*"service_account"' "$json_file"; then
-              echo "Tracked JSON looks like a Google service-account key: $json_file" >&2
+            if grep -Eq '("type"[[:space:]]*:[[:space:]]*"service_account")|("(client_secret|private_key|refresh_token|access_token)"[[:space:]]*:[[:space:]]*"[^"]+")' "$json_file"; then
+              echo "Tracked JSON looks like a Google credential or OAuth token: $json_file" >&2
               exit 1
             fi
           done < <(git ls-files '*.json')

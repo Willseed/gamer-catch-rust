@@ -17,11 +17,13 @@ CONFIG_FILENAME = "config.toml"
 CREDENTIALS_DIRECTORY = "credentials"
 WINDOWS_STARTER_ENTRY = "1_首次設定.cmd"
 WINDOWS_RUNNER_ENTRY = "2_開始抓取.cmd"
+WINDOWS_GMAIL_AUTHORIZER_ENTRY = "Gmail_首次授權.cmd"
 WINDOWS_SCHEDULER_ENTRY = "3_安裝每天早上9點自動抓取.cmd"
 WINDOWS_SCHEDULER_SCRIPT = "install-windows-task.ps1"
 WINDOWS_CMD_ENTRIES = (
     WINDOWS_STARTER_ENTRY,
     WINDOWS_RUNNER_ENTRY,
+    WINDOWS_GMAIL_AUTHORIZER_ENTRY,
     WINDOWS_SCHEDULER_ENTRY,
 )
 PARENTHESIZED_CMD_CONTROL_FLOW = re.compile(
@@ -45,6 +47,7 @@ class PlatformFiles:
     driver_node: str
     starter: str
     runner: str
+    gmail_authorizer: str
     manual: str
     extra_required: tuple[str, ...] = ()
 
@@ -55,6 +58,7 @@ PLATFORM_FILES = {
         driver_node="playwright-driver/node",
         starter="1_首次設定.command",
         runner="2_開始抓取.command",
+        gmail_authorizer="Gmail_首次授權.command",
         manual="GamerCatch_零基礎使用手冊_macOS.pdf",
     ),
     "windows": PlatformFiles(
@@ -62,6 +66,7 @@ PLATFORM_FILES = {
         driver_node="playwright-driver/node.exe",
         starter=WINDOWS_STARTER_ENTRY,
         runner=WINDOWS_RUNNER_ENTRY,
+        gmail_authorizer=WINDOWS_GMAIL_AUTHORIZER_ENTRY,
         manual="GamerCatch_零基礎使用手冊_Windows.pdf",
         extra_required=(WINDOWS_SCHEDULER_ENTRY, WINDOWS_SCHEDULER_SCRIPT),
     ),
@@ -92,6 +97,17 @@ def read_required(archive: zipfile.ZipFile, entries: list[str], suffix: str) -> 
     return data
 
 
+def contains_forbidden_key(value: object, forbidden: set[str]) -> bool:
+    if isinstance(value, dict):
+        return any(
+            key in forbidden or contains_forbidden_key(child, forbidden)
+            for key, child in value.items()
+        )
+    if isinstance(value, list):
+        return any(contains_forbidden_key(child, forbidden) for child in value)
+    return False
+
+
 def validate_config(data: bytes) -> None:
     try:
         config = tomllib.load(io.BytesIO(data))
@@ -106,8 +122,18 @@ def validate_config(data: bytes) -> None:
         fail("safe example must enable exactly one game")
     if any(bool(game.get("write_to_google_sheets")) for game in games):
         fail("safe example must disable all Google Sheets writes")
-    if any("private_key" in str(game) for game in games):
-        fail("config.toml unexpectedly contains private-key material")
+    gmail = config.get("gmail_notifications")
+    if not isinstance(gmail, dict) or gmail.get("enabled") is not False:
+        fail("safe example must include disabled Gmail notifications")
+    if gmail.get("oauth_client_secret_path") != "credentials/gmail-oauth-client.json":
+        fail("safe example must use the documented Gmail OAuth JSON path")
+    forbidden_secret_keys = {"access_token", "client_secret", "private_key", "refresh_token"}
+    if contains_forbidden_key(config, forbidden_secret_keys):
+        fail("config.toml unexpectedly contains inline secret material")
+    for game in games:
+        recipients = game.get("notification_recipients")
+        if not isinstance(recipients, list):
+            fail("every beginner game slot must include notification_recipients")
 
 
 def validate_no_local_build_paths(data: bytes) -> None:
@@ -147,6 +173,7 @@ def validate_required_files(
     existence_only = (COMMON_REQUIRED - {CONFIG_FILENAME}) | {
         files.starter,
         files.runner,
+        files.gmail_authorizer,
         "playwright-driver/package/cli.js",
     } | set(files.extra_required)
     for required in existence_only:
@@ -248,6 +275,18 @@ def validate_windows_scheduler(
         WINDOWS_RUNNER_ENTRY,
     )
 
+    gmail_authorizer = commands[WINDOWS_GMAIL_AUTHORIZER_ENTRY]
+    require_markers(
+        gmail_authorizer,
+        (
+            "--authorize-gmail",
+            "last-gmail-authorization.log",
+            "goto :authorization_failed",
+            "--no-pause",
+        ),
+        WINDOWS_GMAIL_AUTHORIZER_ENTRY,
+    )
+
     entry = commands[WINDOWS_SCHEDULER_ENTRY]
     require_markers(
         entry,
@@ -284,12 +323,28 @@ def validate_macos_executable_modes(
         files.driver_node,
         files.starter,
         files.runner,
+        files.gmail_authorizer,
     ]
     for required in required_executables:
         info = archive.getinfo(matching_entry(entries, required))
         mode = (info.external_attr >> 16) & 0o777
         if mode & 0o111 == 0:
             fail(f"macOS release entry is not executable: {required}")
+
+
+def validate_macos_gmail_authorizer(
+    archive: zipfile.ZipFile, entries: list[str], files: PlatformFiles
+) -> None:
+    data = read_required(archive, entries, files.gmail_authorizer)
+    try:
+        script = data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        fail(f"{files.gmail_authorizer} is not UTF-8: {error}")
+    require_markers(
+        script,
+        ("--authorize-gmail", "last-gmail-authorization.log", "set -uo pipefail"),
+        files.gmail_authorizer,
+    )
 
 
 def validate_empty_credentials_directory(
@@ -323,6 +378,7 @@ def validate_archive(path: str, platform: str) -> None:
         validate_binary_format(executable_data, driver_data, platform)
         if platform == "macos":
             validate_macos_executable_modes(archive, entries, files)
+            validate_macos_gmail_authorizer(archive, entries, files)
         else:
             validate_windows_scheduler(archive, entries)
         validate_empty_credentials_directory(archive, entries)

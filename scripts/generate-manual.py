@@ -30,11 +30,14 @@ from reportlab.platypus import (
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = ROOT / "output" / "pdf"
-VERSION = "0.1.2"
+VERSION = "0.2.0"
 DEFAULT_COLUMN_LAYOUT = "A / B / C"
 PROGRAM_WRITTEN_VALUE = "由程式寫入"
 MACOS_RUN_SCRIPT = "2_開始抓取.command"
 WINDOWS_RUN_SCRIPT = "2_開始抓取.cmd"
+MACOS_GMAIL_AUTHORIZER = "Gmail_首次授權.command"
+WINDOWS_GMAIL_AUTHORIZER = "Gmail_首次授權.cmd"
+GMAIL_AUTHORIZATION_LOG = "last-gmail-authorization.log"
 WINDOWS_SCHEDULE_LAUNCHER = "3_安裝每天早上9點自動抓取.cmd"
 WINDOWS_SCHEDULE_SCRIPT = "install-windows-task.ps1"
 WINDOWS_SCHEDULE_LOG = "last-scheduled-run.log"
@@ -418,7 +421,7 @@ class ManualDocTemplate(BaseDocTemplate):
             bottomMargin=19 * mm,
             title=f"GamerCatch 零基礎使用手冊 - {platform_label}",
             author="GamerCatch",
-            subject="多遊戲、多 Google Sheets 帳號設定與操作",
+            subject="多遊戲、Google Sheets 與 Gmail 異常通知設定操作",
         )
         self.platform_label = platform_label
         frame = Frame(
@@ -472,7 +475,7 @@ def cover(platform: str):
         p("GamerCatch", "cover_title"),
         p("零基礎設定與操作手冊", "cover_title"),
         Spacer(1, 4 * mm),
-        p(f"{platform} 版｜多遊戲、多 Google Sheets 帳號", "cover_subtitle"),
+        p(f"{platform} 版｜多遊戲、Google Sheets、Gmail 異常通知", "cover_subtitle"),
         Spacer(1, 20 * mm),
         callout(
             "您不需要會寫程式",
@@ -483,7 +486,7 @@ def cover(platform: str):
         cover_steps_table(),
         Spacer(1, 29 * mm),
         p(
-            "用途：一次抓取多個巴哈手機遊戲的排行與人氣，並分別寫入不同人的 Google 試算表。",
+            "用途：一次抓取多個巴哈手機遊戲的排行與人氣，分別寫入不同人的 Google 試算表，並在異常時寄出 Gmail 通知。",
             "cover_subtitle",
         ),
         Spacer(1, 4 * mm),
@@ -500,7 +503,7 @@ def download_page(platform: str):
             step(1, "確認晶片", "點左上角蘋果選單，再點「關於這台 Mac」。本版只支援 Apple M1、M2、M3、M4 等 Apple Silicon 晶片；Intel Mac 暫不支援。"),
             step(2, "下載 ZIP", "從本專案的 GitHub Release 下載 <b>GamerCatch-macOS-arm64.zip</b>。若您的 Mac 顯示 Intel，請不要下載本版。"),
             step(3, "完整解壓縮", "雙擊 ZIP，將整個解壓縮後的 GamerCatch 資料夾放到「文件」等容易找到的位置。"),
-            step(4, "確認檔案", "資料夾內應看到 GamerCatch、兩個 .command、config.toml、credentials、playwright-driver 與本手冊。"),
+            step(4, "確認檔案", "資料夾內應看到 GamerCatch、三個 .command（含 Gmail 首次授權）、config.toml、credentials、playwright-driver 與本手冊。"),
         ]
     else:
         items += [
@@ -510,7 +513,7 @@ def download_page(platform: str):
             step(
                 4,
                 "確認檔案",
-                f"資料夾內應看到 GamerCatch.exe、三個 .cmd、{WINDOWS_SCHEDULE_SCRIPT}、"
+                f"資料夾內應看到 GamerCatch.exe、四個 .cmd（含 Gmail 首次授權）、{WINDOWS_SCHEDULE_SCRIPT}、"
                 "config.toml、credentials、playwright-driver 與本手冊。",
             ),
         ]
@@ -622,8 +625,8 @@ def google_cloud_page():
         step(4, "啟用 Google Sheets API", "搜尋 Google Sheets API，點進結果後按「啟用」。請確認不是只建立 API key。"),
         Spacer(1, 4 * mm),
         callout(
-            "不需要 OAuth 同意畫面",
-            "本工具使用 service account 直接存取已分享的特定試算表，不使用個人 OAuth 登入，也不需要網域範圍委派。",
+            "這一頁只處理 Google Sheets",
+            "Sheets 使用 service account 直接存取已分享的試算表，不使用個人 OAuth。選用的 Gmail 異常通知使用另一份 Desktop OAuth 憑證，請依第 09 章起的步驟設定，兩者不可混用。",
             "info",
         ),
         PageBreak(),
@@ -631,7 +634,7 @@ def google_cloud_page():
 
 
 def service_account_page():
-    return heading("06", "建立 service account 並下載 JSON") + [
+    return heading("06", "建立 Sheets service account 並下載 JSON") + [
         step(1, "開啟服務帳戶", "Google Cloud 左上角選單 →「IAM 與管理」→「服務帳戶」，再按「建立服務帳戶」。"),
         step(2, "取一個看得懂的名稱", "例如 gamercatch-nightcrow。名稱只用來讓您辨認，不會改變巴哈遊戲名稱。"),
         step(3, "不要亂給 Cloud 角色", "本工具不需要 Google Cloud 專案 Owner 或 Editor。若畫面允許，可以略過角色直接完成。試算表權限稍後在 Google Sheets 裡分享。"),
@@ -679,7 +682,7 @@ def credentials_page(platform: str):
     )
     return heading("08", "把 JSON 放進 credentials 資料夾") + [
         step(1, "重新命名三份 JSON", "建議依序命名為 person-1-service-account.json、person-2-service-account.json、person-3-service-account.json。"),
-        step(2, "拖進 credentials", "把 JSON 拖進第一次設定時開啟的 credentials 資料夾。不要放在 playwright-driver，也不要跟執行檔混在同一層。"),
+        step(2, "拖進 credentials", "把 JSON 拖進第一次設定時開啟的 credentials 資料夾。不要放在 playwright-driver，也不要跟執行檔混在同一層。若要啟用 Gmail，稍後也會把 gmail-oauth-client.json 放在這裡。"),
         step(3, "確認副檔名", file_view_tip),
         Spacer(1, 4 * mm),
         code_block(
@@ -688,20 +691,124 @@ def credentials_page(platform: str):
             "  credentials/\n"
             "    person-1-service-account.json\n"
             "    person-2-service-account.json\n"
-            "    person-3-service-account.json"
+            "    person-3-service-account.json\n"
+            "    gmail-oauth-client.json    （啟用 Gmail 時才需要）"
         ),
         Spacer(1, 5 * mm),
         callout(
             "不要把自己的設定重新壓回公開 ZIP",
-            "正式下載包裡的 credentials 是空資料夾。您放入的 JSON 只應留在自己的電腦，不應跟著上傳或分享。",
+            "正式下載包裡的 credentials 是空資料夾。service account JSON 與 Gmail OAuth JSON 都只應留在自己的電腦，不應跟著上傳或分享。refresh token 會存入 Keychain／Credential Manager，不會出現在資料夾。",
             "danger",
         ),
         PageBreak(),
     ]
 
 
+def gmail_cloud_page():
+    return heading(
+        "09",
+        "Gmail：建立專用 Desktop OAuth 憑證",
+        "這是選用功能。只有希望在異常時收到信，才需要完成本章；不用時保持 gmail_notifications.enabled = false。",
+    ) + [
+        callout(
+            "不能沿用 Sheets 的 JSON",
+            "Google Sheets 使用 service account；Gmail 使用寄件者本人同意的 OAuth 2.0。請勿使用 Sheets JSON、API key 或 Web client。",
+            "warning",
+        ),
+        Spacer(1, 4 * mm),
+        step(1, "啟用 Gmail API", "以預定的寄件 Gmail 登入 Google Cloud Console，建立或選擇專案。到「API 和服務」→「程式庫」，搜尋 Gmail API 並啟用。"),
+        step(2, "設定 Google Auth Platform", "填應用程式名稱與支援信箱。有 Workspace 組織且只供組織內使用可選 Internal；一般個人 Gmail 選 External，Testing 時要把寄件帳號加入 Test users。"),
+        step(3, "只加入 gmail.send", "到 Data Access 加入 https://www.googleapis.com/auth/gmail.send。這是寄信所需的最小 sensitive scope；不要加入讀信或完整信箱權限。"),
+        step(4, "建立 Desktop app", "到 Clients 建立 OAuth client，Application type 必須選 Desktop app（電腦版應用程式）。下載 JSON，重新命名為 gmail-oauth-client.json。"),
+        Spacer(1, 4 * mm),
+        callout(
+            "Testing 通常只有 7 天",
+            "External 專案保持 Testing 時，gmail.send 授權與 refresh token 通常 7 天後失效，不適合每日排程。長期使用請依帳號情況採 Internal，或切換 In production 並完成 Google 要求的適用設定／驗證。",
+            "danger",
+        ),
+        PageBreak(),
+    ]
+
+
+def gmail_authorization_page(platform: str):
+    authorizer = (
+        MACOS_GMAIL_AUTHORIZER if platform == "macOS" else WINDOWS_GMAIL_AUTHORIZER
+    )
+    secure_store = "macOS Keychain" if platform == "macOS" else "Windows Credential Manager"
+    return heading(
+        "10",
+        "Gmail：填收件人並完成首次授權",
+        "授權只需在啟用時或權限失效後操作。平常抓取與排程不會彈出 Google 登入頁。",
+    ) + [
+        code_block(
+            "[gmail_notifications]\n"
+            "enabled = true\n"
+            'sender_email = "alerts@gmail.com"\n'
+            'default_recipients = ["owner@example.com", "backup@example.com"]\n'
+            'oauth_client_secret_path = "credentials/gmail-oauth-client.json"\n'
+            'subject_prefix = "[GamerCatch]"\n\n'
+            "[[games]]\n"
+            "notification_recipients = []\n\n"
+            "[[games]]\n"
+            'notification_recipients = ["person-2@example.com"]'
+        ),
+        Spacer(1, 4 * mm),
+        step(1, "放好 OAuth JSON", "把 gmail-oauth-client.json 放入 credentials。檔案內含 client secret，不可上傳、寄給別人或附在問題回報。"),
+        step(2, "核對寄件人與收件人", "一份 config 只支援一個 sender_email，但可有多位收件人。sender_email 要和稍後登入的 Gmail 相同；notification_recipients = [] 會使用 default_recipients，非空白時會取代預設收件人。"),
+        step(3, f"雙擊 {authorizer}", "瀏覽器開啟後登入 sender_email，並同意 gmail.send。請保持黑色視窗開啟；程式使用 PKCE，只在 127.0.0.1 的隨機本機 port 等待，5 分鐘後逾時。"),
+        step(4, "確認每人都收到測試信", f"程式會分別寄信，收件人看不到彼此地址。結果寫入 {GMAIL_AUTHORIZATION_LOG}；refresh token 只存入 {secure_store}，不會建立 token 檔。"),
+        Spacer(1, 4 * mm),
+        callout(
+            "換環境就重新授權",
+            f"授權只存於目前的{platform}登入帳號，不會跟著 ZIP 或 config 複製。每位系統使用者都要各自授權；換電腦、換使用者、變更 sender_email、撤銷權限或授權到期時，請重新雙擊 {authorizer}。",
+            "info",
+        ),
+        PageBreak(),
+    ]
+
+
+def gmail_behavior_page(platform: str):
+    authorizer = (
+        MACOS_GMAIL_AUTHORIZER if platform == "macOS" else WINDOWS_GMAIL_AUTHORIZER
+    )
+    return heading(
+        "11",
+        "Gmail：通知範圍與常見錯誤",
+        "每位收件者在同一次執行最多收到一封彙整信，而且只包含他應負責的遊戲。",
+    ) + [
+        data_table(
+            ["情況", "收件規則"],
+            [
+                ["遊戲收件人為 []", "使用 gmail_notifications.default_recipients。"],
+                ["遊戲有專用地址", "取代預設地址，只通知 notification_recipients。"],
+                ["同一人負責多個遊戲", "去除重複地址，合併成一封。"],
+                ["全部遊戲的共同錯誤", "通知所有啟用遊戲的有效收件人。"],
+            ],
+            [51 * mm, 114 * mm],
+        ),
+        Spacer(1, 4 * mm),
+        p("會寄與不會寄", "h2"),
+        bullet("會寄：瀏覽器／網路／排行頁、HTTP、安全驗證、DOM、排行或人氣解析、找不到遊戲，以及已啟用的 Sheets 寫入異常。"),
+        bullet("不會寄：全部成功、--dry-run，或刻意設定 write_to_google_sheets = false。"),
+        bullet("設定檔壞掉、程式未啟動、整台電腦斷網或 Gmail 本身失敗時可能寄不出去；仍要查看執行 log。寄信錯誤不會蓋掉原始錯誤。"),
+        Spacer(1, 3 * mm),
+        data_table(
+            ["看到的 Gmail 問題", "怎麼處理"],
+            [
+                ["JSON／redirect_uri_mismatch", "重新下載 Desktop app OAuth JSON，不能用 Web client 或 service account。"],
+                ["access_denied", "External Testing 加入 Test users；組織政策封鎖時聯絡管理員。"],
+                ["找不到授權／更新失敗", f"以相同作業系統帳號重新雙擊 {authorizer}。"],
+                ["本機回呼逾時", "保持黑色視窗開啟，並在 5 分鐘內完成瀏覽器授權。"],
+                ["Gmail API 403", "確認 API 已啟用且使用 gmail.send；權限曾改過時撤銷後重授權。"],
+            ],
+            [55 * mm, 110 * mm],
+        ),
+        PageBreak(),
+    ]
+
+
 def config_rules_page():
-    return heading("09", "編輯 config.toml 的三條規則") + [
+    return heading("12", "編輯 config.toml 的四條規則") + [
         callout(
             "只修改等號右邊",
             "引號內的文字可以換；true / false 必須是小寫且不加引號；頁碼與列號用數字且不加引號。",
@@ -714,11 +821,12 @@ def config_rules_page():
                 ["引號內文字", 'game_name = "夜鴉"', "刪掉雙引號"],
                 ["安全開關", "enabled = true", 'enabled = "true"'],
                 ["數字", "end_page = 20", 'end_page = "20"'],
+                ["電子郵件陣列", '["a@example.com", "b@example.com"]', '"a@example.com,b@example.com"'],
             ],
             [42 * mm, 63 * mm, 60 * mm],
         ),
         Spacer(1, 6 * mm),
-        bullet("不要刪除 [[games]]、欄位名稱、等號、雙引號或方括號。"),
+        bullet("不要刪除 [[games]]、欄位名稱、等號、雙引號或方括號。多人地址要各自加雙引號並以逗號分開。"),
         bullet("編輯後直接按「儲存」，不要另存成 config.toml.txt。"),
         bullet("一般使用者不要修改 base_url、category、逾時或延遲。"),
         bullet("建議保留 headless = false，遇到巴哈安全驗證時才看得到瀏覽器。"),
@@ -746,8 +854,9 @@ def config_fields_page():
         ["date_column", "日期欄，例如 A"],
         ["rank_column", "排行欄，例如 B"],
         ["popularity_column", "人氣欄，例如 C"],
+        ["notification_recipients", "此遊戲專用通知地址；[] 會使用 Gmail 的全域預設"],
     ]
-    return heading("10", "每一個設定欄位是什麼") + [
+    return heading("13", "每一個遊戲設定欄位是什麼") + [
         data_table(["欄位", "小白版說明"], rows, [57 * mm, 108 * mm]),
         Spacer(1, 5 * mm),
         callout(
@@ -760,7 +869,7 @@ def config_fields_page():
 
 
 def config_examples_page():
-    return heading("11", "三個遊戲怎麼填") + [
+    return heading("14", "三個遊戲怎麼填") + [
         p("先完成遊戲 1。遊戲 2、3 可以複製相同格式，但要換成各自的名稱、試算表網址與 JSON。"),
         code_block(
             "[[games]]\n"
@@ -774,7 +883,8 @@ def config_examples_page():
             "first_data_row = 2\n"
             'date_column = "A"\n'
             'rank_column = "B"\n'
-            'popularity_column = "C"'
+            'popularity_column = "C"\n'
+            "notification_recipients = []"
         ),
         Spacer(1, 5 * mm),
         p("第二個遊戲的差異", "h2"),
@@ -784,7 +894,8 @@ def config_examples_page():
             'game_name = "請填巴哈上的第二個完整名稱"\n'
             "write_to_google_sheets = false\n"
             'spreadsheet_id = "https://docs.google.com/spreadsheets/d/第二張ID/edit"\n'
-            'service_account_key_path = "credentials/person-2-service-account.json"'
+            'service_account_key_path = "credentials/person-2-service-account.json"\n'
+            'notification_recipients = ["person-2@example.com"]'
         ),
         Spacer(1, 5 * mm),
         p("第三個遊戲同理，改用第三張試算表與 person-3-service-account.json。若暫時不用，請保持 enabled = false。"),
@@ -799,10 +910,10 @@ def config_examples_page():
 
 def dry_run_page(platform: str):
     runner = MACOS_RUN_SCRIPT if platform == "macOS" else WINDOWS_RUN_SCRIPT
-    return heading("12", "第一次先做安全測試") + [
+    return heading("15", "第一次先做安全測試") + [
         callout(
             "所有遊戲先保持 write_to_google_sheets = false",
-            "這樣程式會抓取排行與人氣，但不會修改任何 Google 試算表。",
+            "這樣程式會抓取排行與人氣，但不會修改任何 Google 試算表。dry-run 即使發現錯誤也不會寄 Gmail 通知。",
             "success",
         ),
         Spacer(1, 4 * mm),
@@ -818,7 +929,7 @@ def dry_run_page(platform: str):
         Spacer(1, 4 * mm),
         callout(
             "客服用的強制 dry-run",
-            "命令列的 --dry-run 會強制所有遊戲不寫入，即使設定檔有人誤填 true。一般使用者不需要使用；依客服指示操作即可。",
+            "命令列的 --dry-run 會強制所有遊戲不寫入、不寄 Gmail，即使設定檔有人誤填 true。一般使用者不需要使用；依客服指示操作即可。",
             "info",
         ),
         PageBreak(),
@@ -837,7 +948,7 @@ def production_page(platform: str):
         if platform == "Windows"
         else ""
     )
-    return heading("13", "開啟正式寫入與平常執行") + [
+    return heading("16", "開啟正式寫入與平常執行") + [
         p("建議一次只開啟一個遊戲，確認試算表真的寫對，再開下一個。"),
         step(1, "先開遊戲 1", "把第 1 個遊戲改成 write_to_google_sheets = true，儲存。其他遊戲仍保持 false。"),
         step(2, f"雙擊 {runner}", "等待顯示「Google Sheets 更新完成」與列號。若今天日期不存在，會顯示未完成並保留視窗。"),
@@ -846,7 +957,7 @@ def production_page(platform: str):
         Spacer(1, 4 * mm),
         callout(
             "平常只需要雙擊開始抓取",
-            f"看到「全部處理完成」後即可關閉視窗。{log_note}{schedule_note}",
+            f"看到「全部處理完成」後即可關閉視窗。成功時不會寄信；異常時才依收件規則彙整通知。{log_note}{schedule_note}",
             "success",
         ),
         Spacer(1, 5 * mm),
@@ -861,13 +972,13 @@ def production_page(platform: str):
 
 def windows_schedule_page():
     return heading(
-        "13-1",
+        "16-1",
         "Windows：每天 09:00 自動抓取",
         "這是選用功能。09:00 是 Windows 的本機時間；試算表要找哪一天，仍由每個遊戲的 timezone 決定。",
     ) + [
         callout(
             "先手動成功，再安裝排程",
-            f"請先用 {WINDOWS_RUN_SCRIPT} 完成安全測試與正式寫入，確認所有遊戲、JSON、試算表和日期列都正確。安裝排程不會立刻抓取。",
+            f"請先用 {WINDOWS_RUN_SCRIPT} 完成安全測試與正式寫入；啟用 Gmail 時，也要先以相同 Windows 帳號執行 {WINDOWS_GMAIL_AUTHORIZER} 並收到測試信。安裝排程不會立刻抓取。",
             "warning",
         ),
         Spacer(1, 4 * mm),
@@ -880,6 +991,7 @@ def windows_schedule_page():
         bullet("Task 使用目前登入的 Windows 帳號與標準權限，不需要密碼或系統管理員。鎖定畫面仍可執行，但登出後不會執行。"),
         bullet("睡眠時會在硬體與電源設定允許時嘗試喚醒；完全關機不能喚醒。錯過 09:00 時，會在之後登入且電腦與網路可用時補跑。"),
         bullet("排程仍遵守 headless 設定。false 會在 09:00 開啟 Chromium；改成 true 可在背景執行，但遇到巴哈安全驗證時仍要改回 false 手動處理。"),
+        bullet(f"排程不會開啟 Google 登入頁。Gmail 授權失效時，請查看 {WINDOWS_SCHEDULE_LOG}，再以相同 Windows 帳號重新雙擊 {WINDOWS_GMAIL_AUTHORIZER}。"),
         bullet("要停用或刪除時，搜尋並開啟「工作排程器」，在「工作排程器程式庫」找到 GamerCatch-Daily-0900 開頭的項目。"),
         Spacer(1, 4 * mm),
         callout(
@@ -898,10 +1010,11 @@ def change_game_page(platform: str):
         ["試算表與分頁", "換表時修改 spreadsheet_id 與 worksheet_name。"],
         ["JSON", "換擁有者或帳號時修改 service_account_key_path，並把新表分享給該 JSON 的 client_email。"],
         ["日期列與欄位", "核對 first_data_row、date_column、rank_column、popularity_column，並先建立今天日期。"],
+        ["通知收件人", "若已啟用 Gmail，核對 notification_recipients；[] 才會使用 default_recipients。"],
         ["啟用狀態", "新遊戲設 enabled = true；不用的舊遊戲設 false，避免兩個區塊同時執行。"],
     ]
     items = heading(
-        "14",
+        "17",
         "更換遊戲時要修改與確認什麼",
         "不需要重裝 GamerCatch。先備份目前可用的 config.toml，再只修改要更換的 [[games]] 區塊。",
     ) + [
@@ -939,8 +1052,9 @@ def troubleshoot_page(platform: str):
         ["設定檔格式錯誤", "對照 config.example.toml，檢查雙引號、等號與 [[games]]。"],
         ["找不到遊戲", "遊戲名稱需與巴哈完全相同；必要時提高 end_page。"],
         ["找不到 JSON", "確認 credentials 路徑、檔名與是否誤成 .json.json。"],
-        ["JSON 格式錯誤", "OAuth 用戶端或 API key 不能替代 service account JSON。"],
+        ["Sheets JSON 格式錯誤", "OAuth 用戶端或 API key 不能替代 service account JSON。"],
         ["Google 403", "確認 Sheets API 已啟用，且試算表以編輯者分享給正確 client_email。"],
+        ["Gmail 通知失敗", f"先看執行 log；授權問題請重新雙擊 {MACOS_GMAIL_AUTHORIZER if platform == 'macOS' else WINDOWS_GMAIL_AUTHORIZER}。"],
         ["工作表不存在", "worksheet_name 必須和試算表底部分頁完全相同。"],
         ["找不到今天日期", "先加入今天，並檢查時區、日期欄與 first_data_row。"],
         ["日期重複", "今天只能出現一次；修正重複日期列後重試。"],
@@ -950,13 +1064,13 @@ def troubleshoot_page(platform: str):
         rows += [
             [
                 "排程安裝後出現亂碼",
-                "若亂碼前已看到 Scheduled task installed or updated.，v0.1.1 的 Windows 工作排程通常已建立，亂碼只影響畫面。完整解壓縮 v0.1.2 或更新版本，複製 config.toml 與 credentials，再到新版資料夾雙擊 3_安裝每天早上9點自動抓取.cmd；不必先刪除原 Task。",
+                "若亂碼前已看到 Scheduled task installed or updated.，v0.1.1 的 Windows 工作排程通常已建立，亂碼只影響畫面。完整解壓縮 v0.2.0 或更新版本，複製 config.toml 與 credentials，再到新版資料夾雙擊 3_安裝每天早上9點自動抓取.cmd；不必先刪除原 Task。",
             ],
             ["排程沒有在 09:00 執行", "確認目前帳號仍登入、Task 未停用，以及電腦、網路與喚醒設定可用。"],
             ["排程執行但沒有寫入", f"查看 {WINDOWS_SCHEDULE_LOG}，再檢查今天日期、write_to_google_sheets 與 CAPTCHA。"],
             ["PowerShell 被公司封鎖", "請聯絡 IT 管理員；不要改成 Unrestricted、停用防毒或用系統管理員強行繞過。"],
         ]
-    return heading("15", "常見錯誤快速對照") + [
+    return heading("18", "常見錯誤快速對照") + [
         data_table(["看到的訊息", "怎麼處理"], rows, [52 * mm, 113 * mm]),
         Spacer(1, 4 * mm),
         callout(
@@ -979,21 +1093,24 @@ def security_page(platform: str):
         if platform == "Windows"
         else ""
     )
-    return heading("16", "私鑰安全、更新與求助") + [
+    return heading("19", "私鑰、OAuth 安全、更新與求助") + [
         p("如果懷疑 JSON 外洩", "h2"),
         step(1, "立刻撤銷舊金鑰", "到 Google Cloud 的 service account「金鑰」頁面，停用或刪除舊金鑰。"),
         step(2, "建立新 JSON", "下載新金鑰，替換 credentials 裡的舊檔。試算表已分享給同一 service account 時，通常不需要重新分享。"),
+        p("Gmail OAuth 的保護方式", "h2"),
+        bullet("gmail-oauth-client.json 含 client secret，不可公開、寄出或附在問題回報。若外洩，請到 Google Cloud 刪除舊 OAuth client、建立新 client 並重新授權。"),
+        bullet("refresh token 只存於 Keychain／Credential Manager。若懷疑帳號授權外洩，請到 Google 帳號撤銷應用程式存取權，再重新授權。"),
         p("更新 GamerCatch", "h2"),
         bullet("先備份舊資料夾中的 config.toml 與整個 credentials。"),
         bullet("把新版解壓縮到新資料夾，不要直接覆蓋舊版。"),
-        bullet(f"複製自己的設定與 JSON 到新版，先以 write_to_google_sheets=false 測試。{update_schedule_note}"),
+        bullet(f"複製自己的設定與 JSON 到新版，先以 write_to_google_sheets=false 測試。Gmail 憑證仍屬同一系統帳號時通常可沿用，仍應重新寄測試信。{update_schedule_note}"),
         p("求助時可以提供", "h2"),
         bullet(f"作業系統 {platform}、x64 / arm64，以及 GitHub Release 版本。"),
         bullet(f"完整錯誤畫面或 {log_name}。上傳前仍應檢查是否含個人路徑。"),
         bullet("隱藏試算表網址後的 config.toml。"),
         callout(
             "絕對不要提供",
-            "service account JSON、private_key、完整私鑰、可編輯的 Google Sheet 公開連結。",
+            "service account JSON、Gmail OAuth JSON、client_secret、refresh token、private_key，或可編輯的 Google Sheet 公開連結。",
             "danger",
         ),
         PageBreak(),
@@ -1013,6 +1130,7 @@ def checklist_page(platform: str):
         ["□", "第一次測試時所有 write_to_google_sheets 都是 false。"],
         ["□", "已確認每個遊戲的排行與人氣正確。"],
         ["□", "已逐一開啟 true，並在每張試算表核對今天資料。"],
+        ["□", "若啟用 Gmail，已用首次授權腳本讓所有有效收件人收到測試信。"],
         ["□", f"平常只需雙擊 {runner}。"],
     ]
     if platform == "Windows":
@@ -1042,10 +1160,18 @@ def checklist_page(platform: str):
             "Google Sheets 分享檔案：<link href='https://support.google.com/a/users/answer/13309904'>support.google.com/a/users/answer/13309904</link>",
             "link",
         ),
+        p(
+            "Gmail API 權限：<link href='https://developers.google.com/workspace/gmail/api/auth/scopes'>developers.google.com/workspace/gmail/api/auth/scopes</link>",
+            "link",
+        ),
+        p(
+            "OAuth Audience 與 Testing：<link href='https://support.google.com/cloud/answer/15549945'>support.google.com/cloud/answer/15549945</link>",
+            "link",
+        ),
         Spacer(1, 10 * mm),
         callout(
             "完成",
-            "您已經把多遊戲、多人的 Google Sheets 完整分開設定。日後新增或更換遊戲，請依第 14 章修改並重新做安全測試。",
+            "您已經把多遊戲、Google Sheets 與選用的 Gmail 通知完成設定。日後新增或更換遊戲，請依第 17 章修改並重新做安全測試。",
             "success",
         ),
     ]
@@ -1063,6 +1189,9 @@ def story(platform: str):
         service_account_page(),
         sharing_page(),
         credentials_page(platform),
+        gmail_cloud_page(),
+        gmail_authorization_page(platform),
+        gmail_behavior_page(platform),
         config_rules_page(),
         config_fields_page(),
         config_examples_page(),

@@ -141,6 +141,7 @@ Copy-Item -LiteralPath (Join-Path $ProjectDir "使用說明.txt") -Destination $
 Copy-Item -LiteralPath $ManualPath -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\1_首次設定.cmd") -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\2_開始抓取.cmd") -Destination $OutputDir
+Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\Gmail_首次授權.cmd") -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\3_安裝每天早上9點自動抓取.cmd") -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "scripts\install-windows-task.ps1") -Destination $OutputDir
 New-Item -ItemType Directory -Path (Join-Path $OutputDir "credentials") | Out-Null

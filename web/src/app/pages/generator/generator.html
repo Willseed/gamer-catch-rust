@@ -20,13 +20,27 @@
         <span class="step">1</span>
         <div>
           <h2 id="bahamut-heading">巴哈掃描範圍</h2>
-          <p>一般情況保留預設值即可。程式會在這些頁面中一次尋找所有啟用的遊戲。</p>
+          <p>
+            手機排行榜使用分類 30，PC 排行榜使用分類
+            500。程式會在所選分類的頁面中一次尋找所有啟用的遊戲。
+          </p>
         </div>
       </div>
       <div class="field-grid compact-grid">
         <label>
-          <span>分類編號</span>
-          <input type="number" min="1" step="1" formControlName="category" inputmode="numeric" />
+          <span>排行榜分類編號</span>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            formControlName="category"
+            inputmode="numeric"
+            aria-describedby="category-help"
+          />
+          <small id="category-help">
+            <strong>30 = 手機排行榜；500 = PC 排行榜。</strong>
+            這是整份設定共用的分類，所有啟用遊戲都必須出現在同一個排行榜。
+          </small>
         </label>
         <label>
           <span>起始頁</span>

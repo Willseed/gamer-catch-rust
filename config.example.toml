@@ -1,8 +1,9 @@
-# 請只修改引號內的文字、true/false 與頁碼，不要刪除欄位名稱。
+# 請只修改引號內的文字、true/false 與數字，不要刪除欄位名稱。
 schema_version = 2
 
 [bahamut]
 base_url = "https://forum.gamer.com.tw/"
+# 30 = 手機排行榜；500 = PC 排行榜。整份設定中的啟用遊戲必須位於同一排行榜。
 category = 30
 # 程式只掃一次 page=1 到 page=20，同時尋找所有啟用的遊戲。
 start_page = 1

@@ -811,7 +811,10 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
         </p>
         <a class="primary-action" href="/generator">開啟設定產生器</a>
         <ol class="steps">
-          <li>先選擇巴哈掃描頁數與是否顯示瀏覽器。一般使用者保留預設即可。</li>
+          <li>
+            先選擇巴哈排行榜分類：<code>30</code> 是手機排行榜，<code>500</code> 是 PC
+            排行榜，再設定掃描頁數與是否顯示瀏覽器。
+          </li>
           <li>
             按「新增遊戲」，逐一填遊戲名稱、試算表網址、分頁、JSON 相對路徑、日期列與輸出欄位。
           </li>
@@ -868,6 +871,13 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             </thead>
             <tbody>
               <tr>
+                <th scope="row">category</th>
+                <td>
+                  <code>30</code> = 手機排行榜；<code>500</code> = PC
+                  排行榜。這是整份設定共用的分類，所有啟用遊戲必須位於同一排行榜。
+                </td>
+              </tr>
+              <tr>
                 <th scope="row">enabled</th>
                 <td>開啟才會處理；暫時不用的遊戲保持關閉。</td>
               </tr>
@@ -914,11 +924,11 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
         <ul class="check-list">
           <li>只修改等號右邊；引號內的文字可以換。</li>
           <li><code>true</code> / <code>false</code> 必須小寫且不加引號。</li>
-          <li>頁碼與列號是數字，不加引號。</li>
           <li>
             多人電子郵件要各自加雙引號並以逗號分開，例如
             <code>["a&#64;example.com", "b&#64;example.com"]</code>。
           </li>
+          <li>分類編號、頁碼與列號是數字，不加引號。</li>
           <li>不要刪除 <code>[[games]]</code>、欄位名稱、等號、雙引號或方括號。</li>
           <li>建議保留 <code>headless = false</code>，遇到巴哈安全驗證時才看得到瀏覽器。</li>
           <li>掃描頁數最多 200；頁數越多，執行時間與網站負擔越高。</li>
@@ -953,6 +963,11 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
         </div>
 
         <p>先完成遊戲 1。遊戲 2、3 使用相同欄位，但換成各自名稱、試算表、JSON 與收件人。</p>
+        <div class="callout callout--warning" role="note">
+          <strong>同一份設定只能選一種排行榜</strong>
+          <code>category</code> 不在個別遊戲區塊內，而是所有遊戲共用。手機遊戲使用
+          <code>30</code>，PC 遊戲使用 <code>500</code>；請勿在同一份設定同時啟用手機與 PC 遊戲。
+        </div>
         <pre><code>[[games]]
 enabled = true
 game_name = "夜鴉"
@@ -1178,6 +1193,13 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
                 <td>改成巴哈排行卡片上的完整新名稱，空格與符號都要一致。</td>
               </tr>
               <tr>
+                <th scope="row">category</th>
+                <td>
+                  手機遊戲填 <code>30</code>，PC 遊戲填 <code>500</code>。這會套用到所有遊戲；同一份
+                  config.toml 不能同時搜尋手機與 PC 排行榜。
+                </td>
+              </tr>
+              <tr>
                 <th scope="row">end_page</th>
                 <td>新遊戲不在掃描範圍時逐步提高；這會套用到所有遊戲。</td>
               </tr>
@@ -1207,10 +1229,11 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
           </table>
         </section>
         <ol class="steps">
-          <li>先確認新表已分享給正確 client_email，而且今天日期列存在。</li>
+          <li>先確認新遊戲屬於手機排行榜（30）或 PC 排行榜（500），並選對 category。</li>
+          <li>確認新表已分享給正確 client_email，而且今天日期列存在。</li>
           <li>先做不寫入測試，核對遊戲名稱、排行、人氣與 page。</li>
           <li>測試正確後，一次只開一個正式寫入，再核對表、分頁、日期列與欄位。</li>
-          <li>找不到遊戲時先核對名稱，再逐步提高 end_page，不要一開始就設到最大。</li>
+          <li>找不到遊戲時先核對 category 與名稱，再逐步提高 end_page，不要一開始就設到最大。</li>
         </ol>
       </section>
 
@@ -1260,7 +1283,10 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
               </tr>
               <tr>
                 <th scope="row">找不到遊戲</th>
-                <td>名稱要與巴哈完全相同，必要時逐步提高 end_page。</td>
+                <td>
+                  先確認 category：手機排行榜是 30、PC 排行榜是 500；再核對完整名稱，必要時逐步提高
+                  end_page。
+                </td>
               </tr>
               <tr>
                 <th scope="row">找不到 JSON</th>

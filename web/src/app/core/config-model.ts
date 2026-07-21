@@ -445,6 +445,7 @@ export function serializeConfig(config: GamerCatchConfig): string {
     '',
     '[bahamut]',
     'base_url = "https://forum.gamer.com.tw/"',
+    '# 30 = 手機排行榜；500 = PC 排行榜。整份設定共用同一分類。',
     `category = ${tomlUnsignedInteger(config.bahamut.category, DEFAULT_BAHAMUT.category)}`,
     `start_page = ${tomlUnsignedInteger(config.bahamut.startPage, DEFAULT_BAHAMUT.startPage)}`,
     `end_page = ${tomlUnsignedInteger(config.bahamut.endPage, DEFAULT_BAHAMUT.endPage)}`,

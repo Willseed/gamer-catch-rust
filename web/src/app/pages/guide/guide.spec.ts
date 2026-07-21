@@ -66,6 +66,10 @@ describe('GuidePage', () => {
     expect(text).toContain('每天 09:00 自動抓取');
     expect(text).toContain('SHA-256');
     expect(text).toContain('更換遊戲');
+    expect(text).toContain('30 = 手機排行榜');
+    expect(text).toContain('500 = PC 排行榜');
+    expect(text).toContain('不能同時搜尋手機與 PC 排行榜');
+    expect(text).toContain('同一份設定同時啟用手機與 PC');
   });
 
   it('uses visible button text and semantic elements for accessibility', () => {

@@ -395,6 +395,17 @@ mod tests {
     }
 
     #[test]
+    fn builds_pc_ranking_url() {
+        let mut config = test_config();
+        config.bahamut.category = 500;
+
+        assert_eq!(
+            ranking_url(&config, 7).unwrap().as_str(),
+            "https://forum.gamer.com.tw/?c=500&page=7"
+        );
+    }
+
+    #[test]
     fn rejects_redirect_to_wrong_page() {
         assert!(
             validate_final_url("https://forum.gamer.com.tw/?c=30&page=8", &test_config(), 7)

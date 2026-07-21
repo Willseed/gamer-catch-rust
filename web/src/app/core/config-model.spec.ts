@@ -85,6 +85,16 @@ describe('parseRecipients', () => {
 });
 
 describe('serializeConfig', () => {
+  it('documents and serializes the selected Bahamut ranking category', () => {
+    const configuration = config();
+    configuration.bahamut.category = 500;
+
+    const output = serializeConfig(configuration);
+
+    expect(output).toContain('# 30 = 手機排行榜；500 = PC 排行榜。整份設定共用同一分類。');
+    expect(output).toContain('category = 500');
+  });
+
   it('keeps each game account, sheet, worksheet, columns, and recipients independent', () => {
     const configuration = config([
       game({

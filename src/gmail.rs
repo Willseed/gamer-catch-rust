@@ -21,6 +21,7 @@ use oauth2::{
 };
 use reqwest::{Client as HttpClient, StatusCode, header::RETRY_AFTER, redirect::Policy};
 use serde::Deserialize;
+#[cfg(any(target_os = "macos", target_os = "windows", test))]
 use sha2::{Digest, Sha256};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -33,6 +34,7 @@ const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const GMAIL_API_BASE_URL: &str = "https://gmail.googleapis.com/gmail/v1/users/";
 const GMAIL_SEND_SCOPE: &str = "https://www.googleapis.com/auth/gmail.send";
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 const KEYRING_SERVICE: &str = "com.willseed.gamercatch.gmail-oauth";
 const CALLBACK_PATH: &str = "/oauth/callback";
 const AUTHORIZATION_TIMEOUT: Duration = Duration::from_secs(300);
@@ -447,6 +449,7 @@ fn load_refresh_token(config: &GmailNotificationsConfig, client_id: &str) -> Res
         .context("找不到 Gmail 授權；正常執行與排程不會開啟瀏覽器，請先雙擊 Gmail 首次授權腳本")
 }
 
+#[cfg(any(target_os = "macos", target_os = "windows", test))]
 fn keyring_username(config: &GmailNotificationsConfig, client_id: &str) -> String {
     let identity = format!(
         "{}\0{}",

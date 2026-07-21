@@ -76,9 +76,9 @@ jobs:
           $taskName = "GamerCatch-Daily-0900-$($identity.User.Value)"
           $testRoot = Join-Path $env:RUNNER_TEMP 'GamerCatch path with spaces & (test)'
           $installer = Join-Path $testRoot 'install-windows-task.ps1'
-          $entry = Join-Path $testRoot '3_安裝每天早上9點自動抓取.cmd'
+          $entry = Join-Path $testRoot 'schedule.cmd'
           $cmdOutputPath = Join-Path $testRoot 'cmd-output.txt'
-          $runnerEntry = Join-Path $testRoot '2_開始抓取.cmd'
+          $runnerEntry = Join-Path $testRoot 'runner.cmd'
           $runnerOutputPath = Join-Path $testRoot 'runner-output.txt'
           try {
             New-Item -ItemType Directory -Path $testRoot | Out-Null
@@ -103,14 +103,28 @@ jobs:
             Set-Content -LiteralPath (Join-Path $testRoot 'playwright-driver\node.exe') -Value 'test'
             Set-Content -LiteralPath (Join-Path $testRoot 'playwright-driver\package\cli.js') -Value 'test'
             Copy-Item -LiteralPath '.\scripts\install-windows-task.ps1' -Destination $installer
-            Copy-Item -LiteralPath '.\scripts\3_安裝每天早上9點自動抓取.cmd' -Destination $entry
-            Copy-Item -LiteralPath '.\scripts\2_開始抓取.cmd' -Destination $runnerEntry
+            $entrySource = @(Get-ChildItem -LiteralPath '.\scripts' -Filter '3_*.cmd')
+            $runnerSource = @(Get-ChildItem -LiteralPath '.\scripts' -Filter '2_*.cmd')
+            if ($entrySource.Count -ne 1 -or $runnerSource.Count -ne 1) {
+              throw 'Expected exactly one numbered CMD source for the runner and scheduler.'
+            }
+            Copy-Item -LiteralPath $entrySource[0].FullName -Destination $entry
+            Copy-Item -LiteralPath $runnerSource[0].FullName -Destination $runnerEntry
 
             $windowsPowerShell = Join-Path $PSHOME 'powershell.exe'
             $utf8Strict = New-Object System.Text.UTF8Encoding($false, $true)
+            $runnerExpected = [System.Text.Encoding]::UTF8.GetString(
+              [System.Convert]::FromBase64String('5pyJ6aCF55uu5pyq5a6M5oiQ77yM6KuL5p+l55yL5LiK5pa56Yyv6Kqk6KiK5oGv5oiWIGxhc3QtcnVuLmxvZ+OAgg==')
+            )
+            $installExpected = [System.Text.Encoding]::UTF8.GetString(
+              [System.Convert]::FromBase64String('5a6J6KOd5oiQ5Yqf44CC5LiN6ZyA6KaB57O757Wx566h55CG5ZOh5qyK6ZmQ77yM5Lmf5LiN5pyD5YSy5a2YIFdpbmRvd3Mg5a+G56K844CC')
+            )
+            $updateExpected = [System.Text.Encoding]::UTF8.GetString(
+              [System.Convert]::FromBase64String('6YeN5paw6ZuZ5pOK5pys5qqU5qGI5pyD5pu05paw5Y6f5pys55qE5o6S56iL77yM5LiN5pyD5bu656uL6YeN6KSH5bel5L2c44CC')
+            )
             Push-Location $testRoot
             try {
-              & $env:ComSpec /D /C 'call "2_開始抓取.cmd" --no-pause < nul > runner-output.txt 2>&1'
+              & $env:ComSpec /D /C 'call "runner.cmd" --no-pause < nul > runner-output.txt 2>&1'
               $runnerExitCode = $LASTEXITCODE
               $global:LASTEXITCODE = 0
             }
@@ -125,14 +139,14 @@ jobs:
                 $runnerOutput -match '(?i)is not recognized as an internal or external command') {
               throw "The double-click runner produced corrupt output: $runnerOutput"
             }
-            if (-not $runnerOutput.Contains('有項目未完成，請查看上方錯誤訊息或 last-run.log。')) {
+            if (-not $runnerOutput.Contains($runnerExpected)) {
               throw "The double-click runner omitted its Traditional Chinese failure output: $runnerOutput"
             }
             Write-Output $runnerOutput
 
             Push-Location $testRoot
             try {
-              & $env:ComSpec /D /C 'call "3_安裝每天早上9點自動抓取.cmd" --no-pause < nul > cmd-output.txt 2>&1'
+              & $env:ComSpec /D /C 'call "schedule.cmd" --no-pause < nul > cmd-output.txt 2>&1'
               $cmdExitCode = $LASTEXITCODE
               $global:LASTEXITCODE = 0
             }
@@ -147,8 +161,8 @@ jobs:
                 $cmdOutput -match '(?i)is not recognized as an internal or external command') {
               throw "The double-click CMD installer produced corrupt output: $cmdOutput"
             }
-            if (-not $cmdOutput.Contains('安裝成功。不需要系統管理員權限，也不會儲存 Windows 密碼。') -or
-                -not $cmdOutput.Contains('重新雙擊本檔案會更新原本的排程，不會建立重複工作。')) {
+            if (-not $cmdOutput.Contains($installExpected) -or
+                -not $cmdOutput.Contains($updateExpected)) {
               throw "The double-click CMD installer omitted its Traditional Chinese success output: $cmdOutput"
             }
             Write-Output $cmdOutput

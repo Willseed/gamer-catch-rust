@@ -52,7 +52,7 @@
             class="copy-link"
             data-section-link="download"
             (click)="copySectionLink('download')"
-            aria-label="複製下載與完整解壓縮章節連結"
+            aria-describedby="download-title"
           >
             @if (copiedSection() === 'download') {
               已複製
@@ -137,7 +137,7 @@
             class="copy-link"
             data-section-link="system-safety"
             (click)="copySectionLink('system-safety')"
-            aria-label="複製系統安全提示章節連結"
+            aria-describedby="system-safety-title"
           >
             @if (copiedSection() === 'system-safety') {
               已複製
@@ -211,7 +211,7 @@
             class="copy-link"
             data-section-link="multiple-games-accounts"
             (click)="copySectionLink('multiple-games-accounts')"
-            aria-label="複製多遊戲與多人帳號章節連結"
+            aria-describedby="multiple-games-accounts-title"
           >
             @if (copiedSection() === 'multiple-games-accounts') {
               已複製
@@ -228,7 +228,7 @@
           與不同試算表，完全不需要共用帳號。先填一個也可以，其餘遊戲暫時停用。
         </p>
 
-        <div class="table-scroll" tabindex="0" role="region" aria-label="多人多遊戲準備表">
+        <section class="table-scroll" aria-label="多人多遊戲準備表">
           <table>
             <thead>
               <tr>
@@ -267,7 +267,7 @@
               </tr>
             </tbody>
           </table>
-        </div>
+        </section>
 
         <h3>每個遊戲要先準備五樣資料</h3>
         <ul class="check-list">
@@ -305,7 +305,7 @@
             class="copy-link"
             data-section-link="prepare-sheets"
             (click)="copySectionLink('prepare-sheets')"
-            aria-label="複製準備 Google 試算表章節連結"
+            aria-describedby="prepare-sheets-title"
           >
             @if (copiedSection() === 'prepare-sheets') {
               已複製
@@ -318,7 +318,7 @@
         </div>
 
         <p>程式只尋找已經存在的今天，不會自行新增日期列。建議每張試算表先建立以下欄位。</p>
-        <div class="table-scroll" tabindex="0" role="region" aria-label="試算表欄位範例">
+        <section class="table-scroll" aria-label="試算表欄位範例">
           <table>
             <thead>
               <tr>
@@ -345,7 +345,7 @@
               </tr>
             </tbody>
           </table>
-        </div>
+        </section>
         <ol class="steps">
           <li>
             在 A2 之後輸入包含年份的真正日期，例如
@@ -372,7 +372,7 @@
             class="copy-link"
             data-section-link="google-sheets-api"
             (click)="copySectionLink('google-sheets-api')"
-            aria-label="複製啟用 Google Sheets API 章節連結"
+            aria-describedby="google-sheets-api-title"
           >
             @if (copiedSection() === 'google-sheets-api') {
               已複製
@@ -416,7 +416,7 @@
             class="copy-link"
             data-section-link="service-account"
             (click)="copySectionLink('service-account')"
-            aria-label="複製建立 service account 章節連結"
+            aria-describedby="service-account-title"
           >
             @if (copiedSection() === 'service-account') {
               已複製
@@ -463,7 +463,7 @@
             class="copy-link"
             data-section-link="share-sheets"
             (click)="copySectionLink('share-sheets')"
-            aria-label="複製分享試算表章節連結"
+            aria-describedby="share-sheets-title"
           >
             @if (copiedSection() === 'share-sheets') {
               已複製
@@ -506,7 +506,7 @@
             class="copy-link"
             data-section-link="credentials"
             (click)="copySectionLink('credentials')"
-            aria-label="複製放置 JSON 憑證章節連結"
+            aria-describedby="credentials-title"
           >
             @if (copiedSection() === 'credentials') {
               已複製
@@ -557,7 +557,7 @@
             class="copy-link"
             data-section-link="gmail-oauth"
             (click)="copySectionLink('gmail-oauth')"
-            aria-label="複製建立 Gmail OAuth 章節連結"
+            aria-describedby="gmail-oauth-title"
           >
             @if (copiedSection() === 'gmail-oauth') {
               已複製
@@ -620,7 +620,7 @@
             class="copy-link"
             data-section-link="gmail-authorization"
             (click)="copySectionLink('gmail-authorization')"
-            aria-label="複製 Gmail 首次授權章節連結"
+            aria-describedby="gmail-authorization-title"
           >
             @if (copiedSection() === 'gmail-authorization') {
               已複製
@@ -688,7 +688,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="gmail-notifications"
             (click)="copySectionLink('gmail-notifications')"
-            aria-label="複製 Gmail 通知規則章節連結"
+            aria-describedby="gmail-notifications-title"
           >
             @if (copiedSection() === 'gmail-notifications') {
               已複製
@@ -701,7 +701,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
         </div>
 
         <p>每位收件人在一次執行中最多收到一封彙整信，而且只包含他負責的遊戲。</p>
-        <div class="table-scroll" tabindex="0" role="region" aria-label="Gmail 通知收件規則">
+        <section class="table-scroll" aria-label="Gmail 通知收件規則">
           <table>
             <thead>
               <tr>
@@ -728,7 +728,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
               </tr>
             </tbody>
           </table>
-        </div>
+        </section>
         <h3>什麼情況會寄信？</h3>
         <ul class="check-list">
           <li>
@@ -742,7 +742,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
           </li>
           <li>寄信錯誤不會蓋掉原始抓取或寫入錯誤。</li>
         </ul>
-        <div class="table-scroll" tabindex="0" role="region" aria-label="Gmail 常見錯誤">
+        <section class="table-scroll" aria-label="Gmail 常見錯誤">
           <table>
             <thead>
               <tr>
@@ -773,7 +773,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
               </tr>
             </tbody>
           </table>
-        </div>
+        </section>
       </section>
 
       <section
@@ -791,7 +791,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="config-generator"
             (click)="copySectionLink('config-generator')"
-            aria-label="複製設定產生器章節連結"
+            aria-describedby="config-generator-title"
           >
             @if (copiedSection() === 'config-generator') {
               已複製
@@ -844,7 +844,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="config-fields"
             (click)="copySectionLink('config-fields')"
-            aria-label="複製認識設定欄位章節連結"
+            aria-describedby="config-fields-title"
           >
             @if (copiedSection() === 'config-fields') {
               已複製
@@ -856,7 +856,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
           </button>
         </div>
 
-        <div class="table-scroll" tabindex="0" role="region" aria-label="設定欄位說明">
+        <section class="table-scroll" aria-label="設定欄位說明">
           <table>
             <thead>
               <tr>
@@ -907,7 +907,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
               </tr>
             </tbody>
           </table>
-        </div>
+        </section>
         <h3>若需要手動編輯 TOML</h3>
         <ul class="check-list">
           <li>只修改等號右邊；引號內的文字可以換。</li>
@@ -938,7 +938,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="multiple-game-config"
             (click)="copySectionLink('multiple-game-config')"
-            aria-label="複製設定多個遊戲章節連結"
+            aria-describedby="multiple-game-config-title"
           >
             @if (copiedSection() === 'multiple-game-config') {
               已複製
@@ -990,7 +990,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="dry-run"
             (click)="copySectionLink('dry-run')"
-            aria-label="複製第一次安全測試章節連結"
+            aria-describedby="dry-run-title"
           >
             @if (copiedSection() === 'dry-run') {
               已複製
@@ -1036,7 +1036,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="production-run"
             (click)="copySectionLink('production-run')"
-            aria-label="複製正式寫入與平常執行章節連結"
+            aria-describedby="production-run-title"
           >
             @if (copiedSection() === 'production-run') {
               已複製
@@ -1084,7 +1084,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="windows-scheduled-task"
             (click)="copySectionLink('windows-scheduled-task')"
-            aria-label="複製 Windows 每日工作排程章節連結"
+            aria-describedby="windows-scheduled-task-title"
           >
             @if (copiedSection() === 'windows-scheduled-task') {
               已複製
@@ -1144,7 +1144,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="change-game"
             (click)="copySectionLink('change-game')"
-            aria-label="複製更換遊戲章節連結"
+            aria-describedby="change-game-title"
           >
             @if (copiedSection() === 'change-game') {
               已複製
@@ -1162,7 +1162,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
           新遊戲保持
           <code>write_to_google_sheets = false</code>。確認抓到正確遊戲前，不要寫入試算表。
         </div>
-        <div class="table-scroll" tabindex="0" role="region" aria-label="更換遊戲設定對照">
+        <section class="table-scroll" aria-label="更換遊戲設定對照">
           <table>
             <thead>
               <tr>
@@ -1203,7 +1203,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
               </tr>
             </tbody>
           </table>
-        </div>
+        </section>
         <ol class="steps">
           <li>先確認新表已分享給正確 client_email，而且今天日期列存在。</li>
           <li>先做不寫入測試，核對遊戲名稱、排行、人氣與 page。</li>
@@ -1223,7 +1223,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="troubleshooting"
             (click)="copySectionLink('troubleshooting')"
-            aria-label="複製常見錯誤章節連結"
+            aria-describedby="troubleshooting-title"
           >
             @if (copiedSection() === 'troubleshooting') {
               已複製
@@ -1235,7 +1235,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
           </button>
         </div>
 
-        <div class="table-scroll" tabindex="0" role="region" aria-label="常見錯誤快速對照表">
+        <section class="table-scroll" aria-label="常見錯誤快速對照表">
           <table>
             <thead>
               <tr>
@@ -1306,7 +1306,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
               </tr>
             </tbody>
           </table>
-        </div>
+        </section>
         <div class="callout callout--info" role="note">
           <strong>其中一個人失敗，不代表全部失敗</strong>
           程式會繼續處理其他遊戲，最後彙整失敗項目。請依遊戲名稱修正對應的 JSON、試算表或設定。
@@ -1324,7 +1324,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="security"
             (click)="copySectionLink('security')"
-            aria-label="複製憑證與帳號安全章節連結"
+            aria-describedby="security-title"
           >
             @if (copiedSection() === 'security') {
               已複製
@@ -1378,7 +1378,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="update"
             (click)="copySectionLink('update')"
-            aria-label="複製更新 GamerCatch 章節連結"
+            aria-describedby="update-title"
           >
             @if (copiedSection() === 'update') {
               已複製
@@ -1413,7 +1413,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="checksum"
             (click)="copySectionLink('checksum')"
-            aria-label="複製核對 SHA-256 章節連結"
+            aria-describedby="checksum-title"
           >
             @if (copiedSection() === 'checksum') {
               已複製
@@ -1462,7 +1462,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             class="copy-link"
             data-section-link="checklist"
             (click)="copySectionLink('checklist')"
-            aria-label="複製完成檢查表章節連結"
+            aria-describedby="checklist-title"
           >
             @if (copiedSection() === 'checklist') {
               已複製
@@ -1583,11 +1583,11 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
           </ul>
         </div>
 
-        <div class="callout callout--success" role="status">
+        <output class="callout callout--success">
           <strong>完成</strong>
           您已設定多遊戲、多人 Google Sheets 與選用的 Gmail 通知。日後新增或更換遊戲，回到
           <a href="#change-game">更換遊戲章節</a>，再重新做不寫入測試。
-        </div>
+        </output>
       </section>
     </article>
   </div>

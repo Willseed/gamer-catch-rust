@@ -66,6 +66,31 @@ describe('GuidePage', () => {
     expect(text).toContain('更換遊戲');
   });
 
+  it('uses visible button text and semantic elements for accessibility', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const sectionLinkButtons = element.querySelectorAll<HTMLButtonElement>('[data-section-link]');
+    const tableRegions = element.querySelectorAll<HTMLElement>('.table-scroll');
+    const completionMessage = element.querySelector('output.callout--success');
+
+    for (const button of sectionLinkButtons) {
+      expect(button.hasAttribute('aria-label')).toBe(false);
+      expect(button.textContent?.trim()).toMatch(/^#[a-z-]+$/);
+      const headingId = button.getAttribute('aria-describedby');
+      expect(headingId).toBeTruthy();
+      expect(element.querySelector(`#${headingId}`)).not.toBeNull();
+    }
+
+    expect(tableRegions).toHaveLength(7);
+    for (const region of tableRegions) {
+      expect(region.tagName).toBe('SECTION');
+      expect(region.hasAttribute('tabindex')).toBe(false);
+      expect(region.hasAttribute('role')).toBe(false);
+    }
+
+    expect(completionMessage).not.toBeNull();
+    expect(completionMessage?.hasAttribute('role')).toBe(false);
+  });
+
   it('keeps public deep links used by the package and website', () => {
     const element = fixture.nativeElement as HTMLElement;
     const publicAliases = [

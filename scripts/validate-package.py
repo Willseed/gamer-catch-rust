@@ -13,13 +13,15 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 
+CONFIG_FILENAME = "config.toml"
+
 COMMON_REQUIRED = {
     "README.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "使用說明.txt",
     "config.example.toml",
-    "config.toml",
+    CONFIG_FILENAME,
 }
 
 
@@ -126,7 +128,7 @@ def validate_zip_structure(archive: zipfile.ZipFile) -> list[str]:
 def validate_required_files(
     archive: zipfile.ZipFile, entries: list[str], files: PlatformFiles
 ) -> tuple[bytes, bytes]:
-    existence_only = (COMMON_REQUIRED - {"config.toml"}) | {
+    existence_only = (COMMON_REQUIRED - {CONFIG_FILENAME}) | {
         files.starter,
         files.runner,
         "playwright-driver/package/cli.js",
@@ -134,7 +136,7 @@ def validate_required_files(
     for required in existence_only:
         read_required(archive, entries, required)
 
-    validate_config(read_required(archive, entries, "config.toml"))
+    validate_config(read_required(archive, entries, CONFIG_FILENAME))
     validate_manual(read_required(archive, entries, files.manual), files.manual)
     return (
         read_required(archive, entries, files.executable),

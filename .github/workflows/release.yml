@@ -160,20 +160,43 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Collect release files
+        run: |
+          mkdir release-ready
+          for filename in \
+            GamerCatch-macOS-arm64.zip \
+            GamerCatch-Windows-x64.zip \
+            GamerCatch_零基礎使用手冊_macOS.pdf \
+            GamerCatch_零基礎使用手冊_Windows.pdf
+          do
+            match_count="$(find release-assets -type f -name "$filename" -print | awk 'END { print NR }')"
+            if test "$match_count" -ne 1; then
+              echo "Expected exactly one $filename, found $match_count." >&2
+              exit 1
+            fi
+            source_path="$(find release-assets -type f -name "$filename" -print -quit)"
+            cp "$source_path" "release-ready/$filename"
+          done
+
       - name: Validate release assets
         run: |
-          python3 scripts/validate-package.py --platform macos release-assets/GamerCatch-macOS-arm64.zip
-          python3 scripts/validate-package.py --platform windows release-assets/GamerCatch-Windows-x64.zip
-          test -s release-assets/GamerCatch_零基礎使用手冊_macOS.pdf
-          test -s release-assets/GamerCatch_零基礎使用手冊_Windows.pdf
-          cd release-assets
-          sha256sum GamerCatch-* > SHA256SUMS.txt
+          python3 scripts/validate-package.py --platform macos release-ready/GamerCatch-macOS-arm64.zip
+          python3 scripts/validate-package.py --platform windows release-ready/GamerCatch-Windows-x64.zip
+          test -s release-ready/GamerCatch_零基礎使用手冊_macOS.pdf
+          test -s release-ready/GamerCatch_零基礎使用手冊_Windows.pdf
+          cd release-ready
+          sha256sum \
+            GamerCatch-macOS-arm64.zip \
+            GamerCatch-Windows-x64.zip \
+            GamerCatch_零基礎使用手冊_macOS.pdf \
+            GamerCatch_零基礎使用手冊_Windows.pdf \
+            > SHA256SUMS.txt
 
       - name: Create GitHub prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release-assets/* \
+          gh release create "$GITHUB_REF_NAME" release-ready/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "GamerCatch $GITHUB_REF_NAME（腳本版預覽）" \
             --notes-file "packaging/release-notes-$GITHUB_REF_NAME.md" \

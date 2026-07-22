@@ -1,0 +1,21 @@
+<div class="setup-progress" aria-label="首次設定三步驟">
+  <p>首次設定進度</p>
+  <ol role="list">
+    @for (step of steps; track step.number) {
+      <li
+        role="listitem"
+        [class.is-complete]="step.number < currentStep()"
+        [class.is-current]="step.number === currentStep()"
+        [attr.aria-current]="step.number === currentStep() ? 'step' : null"
+      >
+        <span [class]="'marker ' + step.symbolClass" aria-hidden="true">
+          {{ step.symbol }}
+        </span>
+        <span class="step-copy">
+          <small>步驟 {{ step.number }}</small>
+          <strong>{{ step.label }}</strong>
+        </span>
+      </li>
+    }
+  </ol>
+</div>

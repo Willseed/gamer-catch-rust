@@ -72,6 +72,21 @@ describe('GuidePage', () => {
     expect(text).toContain('同一份設定同時啟用手機與 PC');
   });
 
+  it('uses the same three-step first-run journey and exposes the placement target', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const heroSteps = element.querySelectorAll('.hero__steps > li');
+
+    expect(heroSteps).toHaveLength(3);
+    expect([...heroSteps].map((step) => step.textContent?.replace(/\s+/gu, ' ').trim())).toEqual([
+      '1下載並解壓縮',
+      '2準備 Google 並產生設定',
+      '3下載 config.toml 並放好',
+    ]);
+    expect(element.querySelector('#config-placement')?.closest('.guide-section')?.id).toBe(
+      'config-generator',
+    );
+  });
+
   it('uses visible button text and semantic elements for accessibility', () => {
     const element = fixture.nativeElement as HTMLElement;
     const sectionLinkButtons = element.querySelectorAll<HTMLButtonElement>('[data-section-link]');

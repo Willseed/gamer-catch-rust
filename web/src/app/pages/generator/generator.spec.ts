@@ -36,6 +36,20 @@ describe('GeneratorPage', () => {
     expect(fixture.componentInstance.preview()).toContain('category = 500');
   });
 
+  it('shows setup step 2 and points the final action to the placement instructions', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const currentStep = element.querySelector('app-setup-progress [aria-current="step"]');
+    const downloadButton = element.querySelector<HTMLButtonElement>('.download-actions button');
+    const placementLink = element.querySelector<HTMLAnchorElement>(
+      'a[href="/guide#config-placement"]',
+    );
+
+    expect(currentStep?.textContent).toContain('步驟 2');
+    expect(currentStep?.textContent).toContain('產生設定');
+    expect(downloadButton?.textContent).toContain('步驟 3：下載 config.toml');
+    expect(placementLink?.textContent).toContain('下載後放在哪裡');
+  });
+
   it('asks for only the service-account JSON filename and shows the fixed directory', () => {
     const element = fixture.nativeElement as HTMLElement;
     const fileNameInput = element.querySelector<HTMLInputElement>(

@@ -1,31 +1,61 @@
 <main id="main-content">
   <section class="hero dark-band" aria-labelledby="home-title">
     <div class="content-width hero-grid">
-      <div>
+      <div class="hero-copy">
         <p class="eyebrow">巴哈排行榜自動整理工具</p>
-        <h1 id="home-title">多款遊戲，<br />一次抓取。</h1>
+        <h1 id="home-title">第一次使用，<br />照三步完成。</h1>
         <p class="lead">
-          GamerCatch 會從巴哈姆特找到指定遊戲的排行與人氣，再寫進每個人各自的 Google
-          Sheets；發生異常時還能用 Gmail 通知。
+          先下載 GamerCatch，再用網頁產生設定檔。完成後就能把巴哈姆特的遊戲排行與人氣寫進 Google
+          Sheets。
         </p>
-        <div class="hero-actions">
-          <a class="primary-button" routerLink="/generator">建立設定檔</a>
-          <a class="secondary-button on-dark" routerLink="/guide" fragment="quick-start"
-            >第一次使用教學</a
-          >
-        </div>
       </div>
-      <div class="hero-visual" aria-hidden="true">
-        <span class="shape circle"></span>
-        <span class="shape cross"></span>
-        <span class="shape square"></span>
-        <span class="shape triangle"></span>
-        <div class="rank-card">
-          <span>每日資料</span>
-          <strong>排行 + 人氣</strong>
-          <small>寫入 Google Sheets</small>
-        </div>
-      </div>
+      <section class="setup-flow" aria-labelledby="setup-flow-title">
+        <p class="setup-kicker">第一次使用</p>
+        <h2 id="setup-flow-title">先從下載開始</h2>
+        <app-setup-progress [currentStep]="1" />
+        <a class="primary-button setup-cta" routerLink="/downloads"> 步驟 1：下載 GamerCatch </a>
+        <p class="setup-help">網站會自動選擇對應作業系統版本；macOS 目前僅支援 Apple Silicon。</p>
+        <a class="quiet-link" routerLink="/guide" fragment="quick-start">我想先看完整教學</a>
+      </section>
+    </div>
+  </section>
+
+  <section class="blue-band journey" aria-labelledby="journey-title">
+    <div class="content-width">
+      <p class="eyebrow">唯一的開始順序</p>
+      <h2 id="journey-title">先下載，再設定，最後放好檔案</h2>
+      <p class="journey-lead">照著 1、2、3 操作即可，不需要先讀完整份教學。</p>
+      <ol class="journey-list">
+        <li>
+          <span class="journey-symbol triangle-symbol" aria-hidden="true">△</span>
+          <div>
+            <small>步驟 1</small>
+            <h3>下載並完整解壓縮</h3>
+            <p>網站會辨識作業系統並下載對應版本，完成後先解壓縮。</p>
+            <a routerLink="/downloads">下載對應版本 <span aria-hidden="true">→</span></a>
+          </div>
+        </li>
+        <li>
+          <span class="journey-symbol circle-symbol" aria-hidden="true">○</span>
+          <div>
+            <small>步驟 2</small>
+            <h3>使用設定檔產生器</h3>
+            <p>填入遊戲與 Google Sheets 資訊，網站會替你整理 TOML 格式。</p>
+            <a routerLink="/generator">開啟設定檔產生器 <span aria-hidden="true">→</span></a>
+          </div>
+        </li>
+        <li>
+          <span class="journey-symbol square-symbol" aria-hidden="true">□</span>
+          <div>
+            <small>步驟 3</small>
+            <h3>下載設定檔並放好</h3>
+            <p>下載 <code>config.toml</code>，放到 GamerCatch 資料夾最外層。</p>
+            <a routerLink="/guide" fragment="config-placement"
+              >查看放置方式 <span aria-hidden="true">→</span></a
+            >
+          </div>
+        </li>
+      </ol>
     </div>
   </section>
 
@@ -53,42 +83,6 @@
     </div>
   </section>
 
-  <section class="blue-band steps" aria-labelledby="steps-title">
-    <div class="content-width">
-      <p class="eyebrow">三個步驟開始</p>
-      <h2 id="steps-title">今天就完成第一筆資料</h2>
-      <ol class="step-list">
-        <li>
-          <span>1</span>
-          <div>
-            <h3>下載對應版本</h3>
-            <p>選擇 macOS Apple Silicon 或 Windows x64。</p>
-          </div>
-        </li>
-        <li>
-          <span>2</span>
-          <div>
-            <h3>用網頁產生設定</h3>
-            <p>填入遊戲與各自的 Google Sheets 資訊。</p>
-          </div>
-        </li>
-        <li>
-          <span>3</span>
-          <div>
-            <h3>依教學完成授權</h3>
-            <p>放好 JSON、分享試算表，再點兩下開始抓取。</p>
-          </div>
-        </li>
-      </ol>
-      <div class="center-actions">
-        <a class="primary-button white-button" routerLink="/downloads">前往下載</a>
-        <a class="secondary-button on-blue" routerLink="/guide" fragment="prepare-google-sheet"
-          >查看 Google 設定</a
-        >
-      </div>
-    </div>
-  </section>
-
   <section class="light-band docs-callout" aria-labelledby="docs-title">
     <div class="content-width callout-grid">
       <div>
@@ -99,7 +93,7 @@
           <code>#章節</code> 能直接分享給需要的人。
         </p>
       </div>
-      <a class="primary-button" routerLink="/guide">開啟完整教學</a>
+      <a class="docs-link" routerLink="/guide">閱讀完整教學 <span aria-hidden="true">→</span></a>
     </div>
   </section>
 </main>

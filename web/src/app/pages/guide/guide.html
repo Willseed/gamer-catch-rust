@@ -12,11 +12,10 @@
         請勿上傳 service account JSON、Gmail OAuth JSON、private key、client secret 或 refresh
         token。設定產生器只需要檔名與相對路徑。
       </div>
-      <ol class="hero__steps" aria-label="四個主要步驟">
+      <ol class="hero__steps" aria-label="三個首次設定步驟">
         <li><span>1</span>下載並解壓縮</li>
-        <li><span>2</span>建立 Google 憑證</li>
-        <li><span>3</span>產生 config.toml</li>
-        <li><span>4</span>先測試再正式寫入</li>
+        <li><span>2</span>準備 Google 並產生設定</li>
+        <li><span>3</span>下載 config.toml 並放好</li>
       </ol>
     </div>
   </header>
@@ -66,7 +65,7 @@
 
         <p class="lead">
           最常見的失敗原因，就是直接在 ZIP 裡執行，或只把其中一個檔案拖出來。
-          請先確認電腦類型，再下載對應版本。
+          下載頁會自動辨識這台電腦並取得對應版本；目前支援 macOS Apple Silicon 與 Windows x64。
         </p>
 
         <div class="platform-grid">
@@ -821,7 +820,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
           </li>
           <li>若要通知，再開啟 Gmail，填寄件地址、收件地址與 OAuth JSON 相對路徑。</li>
           <li>先讓所有遊戲保持「不寫入 Google Sheets」，再下載 <code>config.toml</code>。</li>
-          <li>
+          <li id="config-placement">
             備份套件內原本的 <code>config.toml</code>，把新檔放到 GamerCatch 資料夾最外層。Windows
             要確認檔名沒有變成 <code>config.toml.txt</code>。
           </li>

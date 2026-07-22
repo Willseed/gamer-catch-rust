@@ -25,7 +25,13 @@ describe('App', () => {
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand')?.textContent).toContain('GamerCatch');
-    expect(compiled.querySelector('nav[aria-label="主要導覽"]')).toBeTruthy();
+    const navigation = compiled.querySelector('nav[aria-label="主要導覽"]');
+    expect(navigation).toBeTruthy();
+    expect([...navigation!.querySelectorAll('a')].map((link) => link.textContent?.trim())).toEqual([
+      '下載',
+      '設定產生器',
+      '完整教學',
+    ]);
     expect(compiled.textContent).toContain('gamer-catch.pylot.dev');
     expect(compiled.textContent).not.toContain(['gamer', 'catch.pylot.dev'].join('.'));
   });

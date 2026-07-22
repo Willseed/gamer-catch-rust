@@ -1,0 +1,110 @@
+:host {
+  display: block;
+  color: #fff;
+}
+
+.setup-progress > p {
+  margin: 0 0 0.85rem;
+  color: #c6cdd6;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+ol {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+ol::before {
+  position: absolute;
+  z-index: 0;
+  top: 1.4rem;
+  right: 16.666%;
+  left: 16.666%;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: #48515d;
+  content: '';
+}
+
+li {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 0.6rem;
+  color: #aeb7c2;
+  text-align: center;
+}
+
+.marker {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 2px solid #596472;
+  border-radius: 50%;
+  background: #121314;
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.triangle {
+  color: #62d6a8;
+}
+
+.circle {
+  color: #ff7088;
+}
+
+.square {
+  color: #d89cff;
+}
+
+.step-copy {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.step-copy small {
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.step-copy strong {
+  color: inherit;
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.is-complete,
+.is-current {
+  color: #fff;
+}
+
+.is-complete .marker {
+  border-color: #fff;
+  background: #004d8d;
+}
+
+.is-current .marker {
+  border-color: #fff;
+  box-shadow:
+    0 0 0 0.25rem #121314,
+    0 0 0 0.45rem #79d4ff;
+}
+
+@media (max-width: 28rem) {
+  .step-copy strong {
+    font-size: 0.78rem;
+  }
+}

@@ -7,6 +7,7 @@
         依序填入遊戲、試算表與通知設定，再下載
         <code>config.toml</code>。所有內容只在你的瀏覽器記憶體中處理，不會傳到伺服器。
       </p>
+      <app-setup-progress [currentStep]="2" />
       <div class="privacy-note" role="note">
         <strong>安全提醒：</strong>service account 只填 JSON 檔名，Gmail OAuth
         才填相對路徑；請勿貼上 JSON 內容。
@@ -297,8 +298,8 @@
       <div class="section-heading result-heading">
         <span class="step">4</span>
         <div>
-          <h2 id="result-heading">檢查並下載</h2>
-          <p>產生器不會替你上傳或保存任何設定。</p>
+          <h2 id="result-heading">下載設定檔並放置</h2>
+          <p>下載後，把 config.toml 放到 GamerCatch 資料夾最外層。</p>
         </div>
       </div>
 
@@ -324,7 +325,7 @@
           (click)="downloadConfig()"
           [disabled]="issues().length > 0"
         >
-          下載 config.toml
+          步驟 3：下載 config.toml
         </button>
         <button
           type="button"
@@ -334,7 +335,7 @@
         >
           複製內容
         </button>
-        <a routerLink="/guide" fragment="config-reference" class="inline-link">接著看放置方式</a>
+        <a routerLink="/guide" fragment="config-placement" class="inline-link">下載後放在哪裡？</a>
       </div>
       <p class="action-message" aria-live="polite">{{ message() }}</p>
 

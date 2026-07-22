@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { startWith } from 'rxjs';
 
+import { SetupProgressComponent } from '../../shared/setup-progress/setup-progress';
 import {
   DEFAULT_BAHAMUT,
   DEFAULT_GMAIL,
@@ -49,7 +50,7 @@ function createGameForm(index: number, source: GameSettings = createDefaultGame(
 
 @Component({
   selector: 'app-generator',
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, SetupProgressComponent],
   templateUrl: './generator.html',
   styleUrl: './generator.scss',
 })

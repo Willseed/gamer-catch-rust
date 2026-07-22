@@ -413,6 +413,44 @@ jobs:
           shellcheck scripts/package-macos.sh scripts/*.command scripts/*.sh
           python3 -m py_compile scripts/create-release-zip.py scripts/validate-package.py
 
+      - name: Require signed and notarized macOS releases
+        run: |
+          if grep -F 'ALLOW_UNSIGNED_MACOS' .github/workflows/release.yml; then
+            echo 'Release workflow must never opt into unsigned macOS packages.' >&2
+            exit 1
+          fi
+          if grep -F 'ALLOW_UNNOTARIZED_MACOS' .github/workflows/release.yml; then
+            echo 'Release workflow must never opt into unnotarized macOS packages.' >&2
+            exit 1
+          fi
+          for marker in \
+            'workflow_dispatch:' \
+            'environment: release' \
+            'MACOS_DEVELOPER_ID_P12_BASE64' \
+            'MACOS_DEVELOPER_ID_P12_PASSWORD' \
+            'APPLE_NOTARY_KEY_P8_BASE64' \
+            'APPLE_NOTARY_KEY_ID' \
+            'APPLE_NOTARY_ISSUER_ID' \
+            'APPLE_TEAM_ID' \
+            'security set-key-partition-list' \
+            'Remove signing credentials' \
+            "if: github.event_name == 'push'"
+          do
+            grep -F "$marker" .github/workflows/release.yml >/dev/null
+          done
+          for marker in \
+            'Authority=Developer ID Application:' \
+            'flags=.*\(runtime\)' \
+            'Timestamp=' \
+            'PENDING_ZIP=' \
+            'uuid.UUID(submission_id)' \
+            'submit_for_notarization' \
+            'mv --' \
+            'Apple notarization Accepted，log issues=0'
+          do
+            grep -F "$marker" scripts/package-macos.sh >/dev/null
+          done
+
       - name: Protect user config in macOS launchers
         run: |
           test_root="$(mktemp -d)"

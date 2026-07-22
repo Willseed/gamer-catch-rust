@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,27 +26,35 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Require annotated tag at tested main HEAD
+      - name: Require tested main source
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          test "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" = "tag"
-          release_commit="$(git rev-parse "$GITHUB_REF_NAME^{commit}")"
           git fetch origin main --no-tags
           main_commit="$(git rev-parse origin/main)"
-          if test "$release_commit" != "$main_commit"; then
-            echo "Release tag must point at the current main HEAD." >&2
-            exit 1
-          fi
+          if test "$GITHUB_EVENT_NAME" = "push"; then
+            test "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" = "tag"
+            release_commit="$(git rev-parse "$GITHUB_REF_NAME^{commit}")"
+            if test "$release_commit" != "$main_commit"; then
+              echo "Release tag must point at the current main HEAD." >&2
+              exit 1
+            fi
 
-          package_version="$(cargo metadata --locked --no-deps --format-version 1 | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["packages"][0]["version"])')"
-          if test "$GITHUB_REF_NAME" != "v$package_version"; then
-            echo "Tag $GITHUB_REF_NAME does not match Cargo version $package_version." >&2
-            exit 1
-          fi
-          if test ! -f "packaging/release-notes-$GITHUB_REF_NAME.md"; then
-            echo "Missing release notes for $GITHUB_REF_NAME." >&2
-            exit 1
+            package_version="$(cargo metadata --locked --no-deps --format-version 1 | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["packages"][0]["version"])')"
+            if test "$GITHUB_REF_NAME" != "v$package_version"; then
+              echo "Tag $GITHUB_REF_NAME does not match Cargo version $package_version." >&2
+              exit 1
+            fi
+            if test ! -f "packaging/release-notes-$GITHUB_REF_NAME.md"; then
+              echo "Missing release notes for $GITHUB_REF_NAME." >&2
+              exit 1
+            fi
+          else
+            release_commit="$GITHUB_SHA"
+            if test "$GITHUB_REF" != "refs/heads/main" || test "$release_commit" != "$main_commit"; then
+              echo "Signing smoke tests must run from the current main HEAD." >&2
+              exit 1
+            fi
           fi
 
           successful_runs="$(gh api --method GET \
@@ -88,10 +97,8 @@ jobs:
     name: Package macOS arm64
     needs: verify-release-source
     runs-on: macos-15
-    env:
-      # Preview builds are intentionally unsigned until the repository has
-      # Developer ID and notarytool secrets configured.
-      ALLOW_UNSIGNED_MACOS: "1"
+    timeout-minutes: 45
+    environment: release
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, Node.js 24
@@ -103,8 +110,129 @@ jobs:
           rustup toolchain install 1.88.0 --profile minimal
           rustup default 1.88.0
 
-      - name: Build package
+      - name: Prepare macOS package staging
+        env:
+          MACOS_PACKAGE_PHASE: prepare
         run: ./scripts/package-macos.sh
+
+      - name: Configure Developer ID and Apple notarization
+        shell: bash
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_DEVELOPER_ID_P12_BASE64 }}
+          CERTIFICATE_P12_PASSWORD: ${{ secrets.MACOS_DEVELOPER_ID_P12_PASSWORD }}
+          NOTARY_KEY_P8_BASE64: ${{ secrets.APPLE_NOTARY_KEY_P8_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          EXPECTED_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          required_values=(
+            CERTIFICATE_P12_BASE64
+            CERTIFICATE_P12_PASSWORD
+            NOTARY_KEY_P8_BASE64
+            NOTARY_KEY_ID
+            NOTARY_ISSUER_ID
+            EXPECTED_TEAM_ID
+          )
+          for value_name in "${required_values[@]}"; do
+            if [[ -z "${!value_name:-}" ]]; then
+              echo "Missing required release environment secret or variable: $value_name" >&2
+              exit 1
+            fi
+          done
+          if [[ ! "$NOTARY_KEY_ID" =~ ^[A-Z0-9]{10}$ ]]; then
+            echo "APPLE_NOTARY_KEY_ID must be a 10-character Apple API Key ID." >&2
+            exit 1
+          fi
+          if [[ ! "$NOTARY_ISSUER_ID" =~ ^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$ ]]; then
+            echo "APPLE_NOTARY_ISSUER_ID must be a UUID." >&2
+            exit 1
+          fi
+          if [[ ! "$EXPECTED_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]; then
+            echo "APPLE_TEAM_ID must be a 10-character Developer Team ID." >&2
+            exit 1
+          fi
+
+          umask 077
+          certificate_path="$RUNNER_TEMP/developer-id-application.p12"
+          notary_key_path="$RUNNER_TEMP/notary-api-key.p8"
+          keychain_path="$RUNNER_TEMP/gamercatch-signing.keychain-db"
+          {
+            echo "MACOS_SIGNING_CERTIFICATE=$certificate_path"
+            echo "MACOS_NOTARY_KEY_PATH=$notary_key_path"
+            echo "MACOS_SIGNING_KEYCHAIN=$keychain_path"
+          } >> "$GITHUB_ENV"
+
+          printf '%s' "$CERTIFICATE_P12_BASE64" | base64 --decode > "$certificate_path"
+          printf '%s' "$NOTARY_KEY_P8_BASE64" | base64 --decode > "$notary_key_path"
+          if [[ ! -s "$certificate_path" ]]; then
+            echo "Decoded Developer ID certificate is empty." >&2
+            exit 1
+          fi
+          if ! grep -F -- '-----BEGIN PRIVATE KEY-----' "$notary_key_path" >/dev/null; then
+            echo "Decoded notarization API key is not an Apple .p8 private key." >&2
+            exit 1
+          fi
+
+          keychain_password="$(openssl rand -hex 32)"
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 1800 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" \
+            -k "$keychain_path" \
+            -f pkcs12 \
+            -P "$CERTIFICATE_P12_PASSWORD" \
+            -x \
+            -T /usr/bin/codesign
+          rm -f "$certificate_path"
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$keychain_password" \
+            "$keychain_path"
+          security list-keychains -d user -s "$keychain_path"
+
+          identity_lines="$(
+            security find-identity -v -p codesigning "$keychain_path" |
+              grep '"Developer ID Application:' || true
+          )"
+          identity_count="$(printf '%s\n' "$identity_lines" | grep -c 'Developer ID Application' || true)"
+          if [[ "$identity_count" -ne 1 ]]; then
+            echo "Expected exactly one Developer ID Application identity, found $identity_count." >&2
+            exit 1
+          fi
+          sign_identity="$(printf '%s\n' "$identity_lines" | awk '{print $2}')"
+          if [[ ! "$sign_identity" =~ ^[A-Fa-f0-9]{40}$ ]]; then
+            echo "Imported Developer ID identity has an invalid fingerprint." >&2
+            exit 1
+          fi
+          {
+            echo "MACOS_SIGN_IDENTITY=$sign_identity"
+            echo "MACOS_NOTARY_KEY_ID=$NOTARY_KEY_ID"
+            echo "MACOS_NOTARY_ISSUER_ID=$NOTARY_ISSUER_ID"
+            echo "MACOS_EXPECTED_TEAM_ID=$EXPECTED_TEAM_ID"
+          } >> "$GITHUB_ENV"
+
+      - name: Sign, notarize, and package
+        env:
+          MACOS_PACKAGE_PHASE: finalize
+        run: ./scripts/package-macos.sh
+
+      - name: Remove signing credentials
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${MACOS_SIGNING_KEYCHAIN:-}" ]]; then
+            security delete-keychain "$MACOS_SIGNING_KEYCHAIN" 2>/dev/null || true
+          fi
+          for sensitive_path in \
+            "${MACOS_SIGNING_CERTIFICATE:-}" \
+            "${MACOS_NOTARY_KEY_PATH:-}"
+          do
+            if [[ -n "$sensitive_path" ]]; then
+              rm -f "$sensitive_path"
+            fi
+          done
 
       - name: Validate package
         run: python3 scripts/validate-package.py --platform macos dist/GamerCatch-macOS-arm64.zip
@@ -119,6 +247,7 @@ jobs:
   windows:
     name: Package Windows x64
     needs: verify-release-source
+    if: github.event_name == 'push'
     runs-on: windows-latest
     env:
       # The owner does not yet have an Authenticode certificate. This makes
@@ -152,6 +281,7 @@ jobs:
   publish:
     name: Publish GitHub release
     needs: [macos, windows]
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -74,7 +74,7 @@ export class GeneratorPage {
       enabled: new FormControl(DEFAULT_GMAIL.enabled, { nonNullable: true }),
       senderEmail: new FormControl(DEFAULT_GMAIL.senderEmail, { nonNullable: true }),
       defaultRecipientsText: new FormControl('', { nonNullable: true }),
-      oauthClientSecretPath: new FormControl(DEFAULT_GMAIL.oauthClientSecretPath, {
+      oauthClientSecretFileName: new FormControl(DEFAULT_GMAIL.oauthClientSecretFileName, {
         nonNullable: true,
       }),
       subjectPrefix: new FormControl(DEFAULT_GMAIL.subjectPrefix, { nonNullable: true }),
@@ -168,7 +168,7 @@ export class GeneratorPage {
         enabled: raw.gmail.enabled,
         senderEmail: raw.gmail.senderEmail,
         defaultRecipients: parseRecipients(raw.gmail.defaultRecipientsText),
-        oauthClientSecretPath: raw.gmail.oauthClientSecretPath,
+        oauthClientSecretFileName: raw.gmail.oauthClientSecretFileName,
         subjectPrefix: raw.gmail.subjectPrefix,
       },
       games: this.games.controls.map((control) => this.gameValue(control)),

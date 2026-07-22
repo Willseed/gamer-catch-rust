@@ -373,21 +373,27 @@ describe('validateConfig credential paths', () => {
     '/tmp/gmail-oauth.json',
     'C:\\credentials\\gmail-oauth.json',
     '../gmail-oauth.json',
+    'credentials/gmail-oauth.json',
+    'folder/gmail-oauth.json',
     '\\\\server\\share\\gmail-oauth.json',
-  ])('rejects a dangerous Gmail OAuth path: %s', (oauthClientSecretPath) => {
+    'gmail-oauth.txt',
+    '.json',
+    ' gmail-oauth.json',
+    'gmail-oauth.json\nignored',
+  ])('rejects anything other than one Gmail OAuth JSON filename: %s', (fileName) => {
     const configuration = config();
     configuration.gmail = {
       ...configuration.gmail,
       enabled: true,
       senderEmail: 'alerts@example.com',
       defaultRecipients: ['owner@example.com'],
-      oauthClientSecretPath,
+      oauthClientSecretFileName: fileName,
     };
 
-    expect(pathsFor(configuration)).toContain('gmail.oauthClientSecretPath');
+    expect(pathsFor(configuration)).toContain('gmail.oauthClientSecretFileName');
   });
 
-  it('accepts a service-account JSON filename and a safe Gmail OAuth relative path', () => {
+  it('accepts credential JSON filenames and adds credentials/ while serializing', () => {
     const configuration = config([
       game({
         writeToGoogleSheets: true,
@@ -400,11 +406,14 @@ describe('validateConfig credential paths', () => {
       enabled: true,
       senderEmail: 'alerts@example.com',
       defaultRecipients: ['owner@example.com'],
-      oauthClientSecretPath: 'credentials/gmail/oauth-client.json',
+      oauthClientSecretFileName: 'gmail-oauth-client.json',
     };
 
     expect(pathsFor(configuration)).not.toContain('games.0.serviceAccountKeyFileName');
-    expect(pathsFor(configuration)).not.toContain('gmail.oauthClientSecretPath');
+    expect(pathsFor(configuration)).not.toContain('gmail.oauthClientSecretFileName');
+    expect(serializeConfig(configuration)).toContain(
+      'oauth_client_secret_path = "credentials/gmail-oauth-client.json"',
+    );
   });
 });
 

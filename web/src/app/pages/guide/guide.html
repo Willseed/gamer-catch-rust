@@ -651,7 +651,10 @@ notification_recipients = []
 [[games]]
 notification_recipients = ["person-2&#64;example.com"]</code></pre>
         <ol class="steps">
-          <li>把 OAuth JSON 放入 credentials，並在設定產生器填入它的相對路徑。</li>
+          <li>
+            把 OAuth JSON 放入 credentials，並在設定產生器只填檔名；產生器會自動加上
+            <code>credentials/</code>。
+          </li>
           <li>
             核對 <code>sender_email</code> 和稍後登入的 Gmail
             相同。遊戲收件人留空時使用全域預設；填入時會取代全域預設。
@@ -818,7 +821,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             按「新增遊戲」，逐一填遊戲名稱、試算表網址、分頁、service account JSON
             檔名、日期列與輸出欄位。
           </li>
-          <li>若要通知，再開啟 Gmail，填寄件地址、收件地址與 OAuth JSON 相對路徑。</li>
+          <li>若要通知，再開啟 Gmail，填寄件地址、收件地址與 OAuth JSON 檔名。</li>
           <li>先讓所有遊戲保持「不寫入 Google Sheets」，再下載 <code>config.toml</code>。</li>
           <li id="config-placement">
             備份套件內原本的 <code>config.toml</code>，把新檔放到 GamerCatch 資料夾最外層。Windows
@@ -827,10 +830,10 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
         </ol>
         <div class="callout callout--danger" role="alert">
           <strong>產生器永遠不需要讀取 JSON 內容</strong>
-          service account 欄位只填像
-          <code>person-1-service-account.json</code> 這種檔名，產生器會自動加上
-          <code>credentials/</code>。不要拖曳、貼上或上傳 JSON、private_key、client_secret 或
-          refresh token。
+          service account 與 Gmail OAuth 欄位都只填像
+          <code>person-1-service-account.json</code>、<code>gmail-oauth-client.json</code>
+          這種檔名，產生器會自動加上 <code>credentials/</code>。不要拖曳、貼上或上傳
+          JSON、private_key、client_secret 或 refresh token。
         </div>
         <div class="callout callout--info" role="note">
           <strong>多人帳號不是多人登入網站</strong>
@@ -900,6 +903,13 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
                 <td>
                   產生器只需填 JSON 檔名，輸出的 TOML 會自動加上
                   <code>credentials/</code>；不要貼 JSON 內容。
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">oauth_client_secret_path</th>
+                <td>
+                  產生器只需填 Gmail OAuth JSON 檔名，輸出的 TOML 會自動加上
+                  <code>credentials/</code>。
                 </td>
               </tr>
               <tr>

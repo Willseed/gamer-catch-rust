@@ -9,8 +9,8 @@
       </p>
       <app-setup-progress [currentStep]="2" />
       <div class="privacy-note" role="note">
-        <strong>安全提醒：</strong>service account 只填 JSON 檔名，Gmail OAuth
-        才填相對路徑；請勿貼上 JSON 內容。
+        <strong>安全提醒：</strong>service account 與 Gmail OAuth 都只填 JSON 檔名；請勿貼上路徑或
+        JSON 內容。
       </div>
     </div>
   </section>
@@ -159,11 +159,14 @@
                   autocomplete="off"
                 />
               </label>
-              <label class="span-two">
-                <span>此遊戲的 service account JSON 檔名</span>
+              <div class="form-field span-two">
+                <label [for]="'service-account-file-' + index">
+                  此遊戲的 service account JSON 檔名
+                </label>
                 <span class="credential-file-input">
                   <span class="credential-path-prefix" aria-hidden="true">credentials/</span>
                   <input
+                    [id]="'service-account-file-' + index"
                     type="text"
                     formControlName="serviceAccountKeyFileName"
                     placeholder="person-1-service-account.json"
@@ -172,11 +175,15 @@
                     [attr.aria-describedby]="'service-account-file-help-' + index"
                   />
                 </span>
-                <small [id]="'service-account-file-help-' + index">
+                <small class="field-note" [id]="'service-account-file-help-' + index">
                   只需填 JSON 檔名，例如 ABC.json；產生器會自動加上
                   credentials/。不同帳號可用不同檔案。
                 </small>
-              </label>
+                <a class="field-guide-link" routerLink="/guide" fragment="service-account">
+                  還沒有 JSON？查看建立 service account JSON 教學
+                  <span aria-hidden="true">→</span>
+                </a>
+              </div>
               <label>
                 <span>日期欄位</span>
                 <input type="text" maxlength="3" formControlName="dateColumn" autocomplete="off" />
@@ -285,11 +292,29 @@
             ></textarea>
             <small>支援多人；每行或逗號分隔，最多 50 個不同地址。</small>
           </label>
-          <label class="span-two">
-            <span>Gmail OAuth 用戶端 JSON 路徑</span>
-            <input type="text" formControlName="oauthClientSecretPath" autocomplete="off" />
-            <small>這是「電腦版應用程式」OAuth JSON，不是 Sheets service account JSON。</small>
-          </label>
+          <div class="form-field span-two">
+            <label for="gmail-oauth-client-file">Gmail OAuth 用戶端 JSON 檔名</label>
+            <span class="credential-file-input">
+              <span class="credential-path-prefix" aria-hidden="true">credentials/</span>
+              <input
+                id="gmail-oauth-client-file"
+                type="text"
+                formControlName="oauthClientSecretFileName"
+                placeholder="gmail-oauth-client.json"
+                autocomplete="off"
+                spellcheck="false"
+                aria-describedby="gmail-oauth-client-file-help"
+              />
+            </span>
+            <small class="field-note" id="gmail-oauth-client-file-help">
+              只需填 JSON 檔名；產生器會自動加上 credentials/。這是「電腦版應用程式」OAuth
+              JSON，不是 Sheets service account JSON。
+            </small>
+            <a class="field-guide-link" routerLink="/guide" fragment="gmail-oauth">
+              還沒有 JSON？查看建立 Gmail OAuth JSON 教學
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
         </div>
       }
     </section>

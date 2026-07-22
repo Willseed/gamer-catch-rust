@@ -86,12 +86,22 @@ label:not(.toggle-row, .toggle-panel) {
   font-weight: 700;
 }
 
+.form-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--text-on-light);
+  font-weight: 700;
+}
+
 label b {
   color: var(--error);
 }
 
 label small,
-.field-help {
+.field-help,
+.field-note {
   color: var(--muted-on-light);
   font-size: 0.9rem;
   font-weight: 500;
@@ -138,6 +148,14 @@ select {
 
 .credential-file-input:hover .credential-path-prefix {
   border-color: #11151a;
+}
+
+.field-guide-link {
+  align-self: flex-start;
+  color: var(--blue-active);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-underline-offset: 0.2em;
 }
 
 textarea {

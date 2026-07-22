@@ -15,7 +15,7 @@ export interface GmailSettings {
   enabled: boolean;
   senderEmail: string;
   defaultRecipients: string[];
-  oauthClientSecretPath: string;
+  oauthClientSecretFileName: string;
   subjectPrefix: string;
 }
 
@@ -58,7 +58,7 @@ export const DEFAULT_GMAIL: Readonly<GmailSettings> = {
   enabled: false,
   senderEmail: '',
   defaultRecipients: [],
-  oauthClientSecretPath: 'credentials/gmail-oauth-client.json',
+  oauthClientSecretFileName: 'gmail-oauth-client.json',
   subjectPrefix: '[GamerCatch]',
 };
 
@@ -184,19 +184,7 @@ function isTimeZone(value: string): boolean {
   }
 }
 
-function isSafeRelativePath(value: string): boolean {
-  const path = value.trim().replaceAll('\\', '/');
-  return (
-    path.length > 0 &&
-    !/[\u0000-\u001f\u007f]/u.test(path) &&
-    !path.startsWith('/') &&
-    !/^[a-z]:\//iu.test(path) &&
-    !path.startsWith('//') &&
-    !path.split('/').some((part) => part === '.' || part === '..' || part.length === 0)
-  );
-}
-
-function isServiceAccountJsonFileName(value: string): boolean {
+function isJsonFileName(value: string): boolean {
   const fileName = value.trim();
   return (
     fileName === value &&
@@ -206,7 +194,7 @@ function isServiceAccountJsonFileName(value: string): boolean {
   );
 }
 
-function serviceAccountKeyPath(fileName: string): string {
+function credentialJsonPath(fileName: string): string {
   return `credentials/${fileName.trim()}`;
 }
 
@@ -299,7 +287,7 @@ function addGameIssues(
     );
   }
 
-  if (!isServiceAccountJsonFileName(game.serviceAccountKeyFileName)) {
+  if (!isJsonFileName(game.serviceAccountKeyFileName)) {
     issues.push({
       path: `${prefix}.serviceAccountKeyFileName`,
       message: `遊戲「${name || index + 1}」：service account JSON 只需填檔名（例如 ABC.json），不可包含 credentials/ 或其他路徑。`,
@@ -408,10 +396,11 @@ export function validateConfig(config: GamerCatchConfig): ConfigIssue[] {
     if (!isEmail(gmail.senderEmail) || gmail.senderEmail !== gmail.senderEmail.trim()) {
       issues.push({ path: 'gmail.senderEmail', message: 'Gmail 寄件帳號格式不正確。' });
     }
-    if (!isSafeRelativePath(gmail.oauthClientSecretPath)) {
+    if (!isJsonFileName(gmail.oauthClientSecretFileName)) {
       issues.push({
-        path: 'gmail.oauthClientSecretPath',
-        message: 'Gmail OAuth JSON 路徑請填 credentials/檔名.json，且不可使用絕對路徑或 ..。',
+        path: 'gmail.oauthClientSecretFileName',
+        message:
+          'Gmail OAuth JSON 只需填檔名（例如 gmail-oauth-client.json），不可包含 credentials/ 或其他路徑。',
       });
     }
     if (
@@ -479,7 +468,7 @@ export function serializeConfig(config: GamerCatchConfig): string {
     `enabled = ${config.gmail.enabled}`,
     `sender_email = ${tomlString(config.gmail.senderEmail.trim())}`,
     `default_recipients = ${tomlArray(config.gmail.defaultRecipients)}`,
-    `oauth_client_secret_path = ${tomlString(config.gmail.oauthClientSecretPath.trim())}`,
+    `oauth_client_secret_path = ${tomlString(credentialJsonPath(config.gmail.oauthClientSecretFileName))}`,
     `subject_prefix = ${tomlString(config.gmail.subjectPrefix)}`,
   ];
 
@@ -493,7 +482,7 @@ export function serializeConfig(config: GamerCatchConfig): string {
       `game_name = ${tomlString(game.gameName.trim())}`,
       `write_to_google_sheets = ${game.writeToGoogleSheets}`,
       `spreadsheet_id = ${tomlString(spreadsheet)}`,
-      `service_account_key_path = ${tomlString(serviceAccountKeyPath(game.serviceAccountKeyFileName))}`,
+      `service_account_key_path = ${tomlString(credentialJsonPath(game.serviceAccountKeyFileName))}`,
       `worksheet_name = ${tomlString(game.worksheetName.trim())}`,
       `timezone = ${tomlString(game.timezone.trim())}`,
       `first_data_row = ${tomlUnsignedInteger(game.firstDataRow, 2)}`,

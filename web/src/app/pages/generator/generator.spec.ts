@@ -57,11 +57,14 @@ describe('GeneratorPage', () => {
     );
     const prefix = element.querySelector('.credential-path-prefix');
     const help = element.querySelector('#service-account-file-help-0');
+    const guideLink = element.querySelector<HTMLAnchorElement>('a[href="/guide#service-account"]');
 
     expect(fileNameInput?.value).toBe('person-1-service-account.json');
+    expect(fileNameInput?.id).toBe('service-account-file-0');
     expect(prefix?.textContent?.trim()).toBe('credentials/');
     expect(help?.textContent).toContain('只需填 JSON 檔名，例如 ABC.json');
     expect(help?.textContent).toContain('產生器會自動加上 credentials/');
+    expect(guideLink?.textContent).toContain('查看建立 service account JSON 教學');
   });
 
   it('adds credentials/ to the filename in the generated TOML', () => {
@@ -71,6 +74,40 @@ describe('GeneratorPage', () => {
       'service_account_key_path = "credentials/ABC.json"',
     );
     expect(fixture.componentInstance.preview()).not.toContain('credentials/credentials/');
+  });
+
+  it('uses the same filename-only pattern for the Gmail OAuth JSON', () => {
+    const gmail = fixture.componentInstance.form.controls.gmail.controls;
+    gmail.enabled.setValue(true);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const input = element.querySelector<HTMLInputElement>(
+      'input[formcontrolname="oauthClientSecretFileName"]',
+    );
+    const field = input?.closest('.form-field');
+    const prefix = field?.querySelector('.credential-path-prefix');
+    const help = field?.querySelector('#gmail-oauth-client-file-help');
+    const guideLink = field?.querySelector<HTMLAnchorElement>('a[href="/guide#gmail-oauth"]');
+
+    expect(input?.value).toBe('gmail-oauth-client.json');
+    expect(prefix?.textContent?.trim()).toBe('credentials/');
+    expect(help?.textContent).toContain('只需填 JSON 檔名');
+    expect(help?.textContent).toContain('產生器會自動加上 credentials/');
+    expect(guideLink?.textContent).toContain('查看建立 Gmail OAuth JSON 教學');
+
+    gmail.oauthClientSecretFileName.setValue('my-gmail-oauth.json');
+    expect(fixture.componentInstance.preview()).toContain(
+      'oauth_client_secret_path = "credentials/my-gmail-oauth.json"',
+    );
+
+    gmail.oauthClientSecretFileName.setValue('credentials/my-gmail-oauth.json');
+    expect(fixture.componentInstance.issues()).toContainEqual(
+      expect.objectContaining({
+        path: 'gmail.oauthClientSecretFileName',
+        message: expect.stringContaining('只需填檔名'),
+      }),
+    );
   });
 
   it('rejects a full credentials path because the field accepts a filename only', () => {

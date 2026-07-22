@@ -554,7 +554,7 @@
         <div class="section-title-row">
           <div class="section-title">
             <span class="section-number">09</span>
-            <h2 id="gmail-oauth-title">Gmail：建立專用 Desktop OAuth 憑證</h2>
+            <h2 id="gmail-oauth-title">Gmail：建立專用的電腦版 OAuth 憑證</h2>
           </div>
           <button
             type="button"
@@ -584,8 +584,8 @@
         </div>
         <div class="callout callout--warning" role="note">
           <strong>不能沿用 Sheets 的 JSON</strong>
-          Gmail 使用寄件者本人同意的 OAuth 2.0；Sheets service account、API key 或 Web client
-          都不能代替 Desktop app OAuth。
+          Gmail 使用寄件者本人同意的 OAuth 2.0；Sheets 服務帳戶、API 金鑰或網頁應用程式用戶端
+          都不能代替電腦版應用程式 OAuth。
         </div>
 
         <h3>開始前先確認寄件帳號與專案</h3>
@@ -594,12 +594,12 @@
             先決定唯一的寄件 Gmail。稍後產生器的「寄件 Gmail」與首次授權時登入的帳號必須完全相同。
           </li>
           <li>
-            Gmail API、Google Auth Platform 與 Desktop OAuth client 必須設定在同一個 Google Cloud
+            Gmail API、Google Auth Platform 與電腦版 OAuth 用戶端必須設定在同一個 Google Cloud
             專案。每一步都先核對畫面頂端顯示的是同一個專案。
           </li>
           <li>
-            可以沿用啟用 Sheets API 的 Cloud 專案，但 Gmail OAuth client 仍是另一份新憑證，不能使用
-            service account JSON 代替。
+            可以沿用啟用 Sheets API 的 Cloud 專案，但 Gmail OAuth 用戶端仍是另一份新憑證，不能使用
+            服務帳戶 JSON 代替。
           </li>
         </ul>
 
@@ -608,54 +608,58 @@
           <li>
             以預定的寄件 Gmail 登入
             <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer"
-              >Google Cloud Console</a
+              >Google Cloud 控制台</a
             >。從頂端專案選單建立或選擇專案，例如
             <code>GamerCatch Gmail</code>；建立後再確認頂端已切換到該專案。
           </li>
           <li>
-            開啟左上角選單 →「API 和服務」→「程式庫」，搜尋並點入「Gmail API」。不要選名稱相近的其他
-            Gmail 服務。
+            開啟左上角選單 →「API 和服務」→「API 程式庫」，搜尋並點入「Gmail
+            API」。不要選名稱相近的其他 Gmail 服務。
           </li>
           <li>
-            按「啟用」。若按鈕已顯示「管理」，代表這個專案已經啟用 Gmail API，可以繼續下一步。
+            按「啟用」。若畫面顯示「API 已啟用」，且按鈕是「管理」，代表這個專案已經啟用 Gmail
+            API，可以繼續下一步。
           </li>
         </ol>
 
         <h3>2. 設定 Google Auth Platform</h3>
         <ol class="steps">
           <li>
-            左上角選單 →「Google Auth Platform」→「Branding」。若看到 Get
-            started，先按下並填寫：應用程式名稱可用
-            <code>GamerCatch</code>，User support email 與 Contact information
-            填可正常收信的地址，再依畫面完成建立。
+            左上角選單 →「Google Auth Platform」→「品牌」。第一次設定時先按「開始使用」，再填寫
+            「應用程式名稱」（可用 <code>GamerCatch</code>）、「使用者支援電子郵件」，以及
+            「開發人員聯絡資訊」下的「電子郵件地址」。這些地址應能正常收信，填完後依畫面儲存。
           </li>
           <li>
-            到「Audience」選擇使用者範圍。只有公司或學校 Google Workspace
-            專案，而且只讓同組織帳號使用時，才選 Internal；一般 <code>gmail.com</code> 個人帳號請選
-            External。
+            到「目標對象」選擇「使用者類型」。只有公司或學校 Google Workspace
+            專案，而且只讓同組織帳號使用時，才選「內部」；一般 <code>gmail.com</code>
+            個人帳號請選「外部」。
           </li>
           <li>
-            External 若顯示 Publishing status 為 Testing，請在 Test users 按 Add
-            users，把本章一開始決定的
+            「外部」若顯示「發布狀態」為「測試」，請在「測試使用者」按「Add
+            users」（這個按鈕目前仍顯示英文），把本章一開始決定的
             <strong>完整寄件 Gmail</strong> 加進去。少了這一步，首次授權可能會顯示拒絕存取。
           </li>
           <li>
-            到「Data Access」→「Add or remove scopes」，搜尋 Gmail API，只勾選
-            <code>https://www.googleapis.com/auth/gmail.send</code>，再按
-            Update／Save。這項權限只供寄信；不要加入讀信、刪信或完整信箱權限。
+            到「資料存取權」→「新增或移除範圍」，搜尋 Gmail API，只勾選
+            <code>https://www.googleapis.com/auth/gmail.send</code
+            >。確認說明是「以您的名義傳送電子郵件」，
+            再按「更新」；若回到頁面後底部的「Save」（目前仍顯示英文）可以按，請再按一次儲存。
+            這項權限只供寄信；不要加入讀信、刪信或完整信箱權限。
           </li>
         </ol>
 
-        <h3>3. 建立並下載 Desktop OAuth client</h3>
+        <h3>3. 建立並下載電腦版 OAuth 用戶端</h3>
         <ol class="steps">
           <li>
-            到「Clients」→「Create client」，Application type 必須選
-            <strong>Desktop app（電腦版應用程式）</strong>，名稱可填
-            <code>GamerCatch desktop</code>。Desktop app 不需要自行填 redirect URI。
+            到「用戶端」→「建立用戶端」。在「建立 OAuth 用戶端 ID」畫面中，「應用程式類型」必須選
+            <strong>「電腦版應用程式」</strong>，名稱可填 <code>GamerCatch desktop</code>。
+            選對類型後不會出現「重新導向 URI」欄位，也不需要自行填寫。
           </li>
           <li>
-            按 Create 後下載 JSON。若已關閉完成視窗，可回到 Clients 清單，從剛建立的 client
-            下載。不要建立 Web application、API key 或 service account。
+            按「建立」後，請先不要關閉完成畫面，並立即把 OAuth 用戶端 JSON 下載到電腦。目前的 Google
+            Cloud 介面無法從「用戶端」清單重新查看用戶端密鑰或重新下載 JSON；
+            如果檔案遺失，請建立一個新的專用「電腦版應用程式」用戶端，並在完成畫面立即下載。
+            不要改建成「網頁應用程式」、API 金鑰或服務帳戶。
           </li>
           <li>
             把下載檔改名為 <code>gmail-oauth-client.json</code>，不要修改 JSON 內容，再放進
@@ -669,17 +673,19 @@
         </ol>
 
         <div class="callout callout--danger" role="alert">
-          <strong>External Testing 通常只有 7 天</strong>
-          <code>gmail.send</code> 授權與 refresh token 通常會在 7
-          天後失效，不適合長期每日排程。長期使用請依帳號情況採 Internal，或切換 In production 並完成
-          Google 要求的設定或驗證。
+          <strong>「外部」＋「測試」通常只有 7 天</strong>
+          <code>gmail.send</code> 授權與更新權杖（refresh token）通常會在 7
+          天後失效，不適合長期每日排程。長期使用時，Google Workspace 專案可依帳號情況改用「內部」；
+          其他情況請按「發布應用程式」，並完成 Google 要求的設定或驗證。
         </div>
 
         <h3>完成前核對</h3>
         <ul class="check-list">
-          <li>Gmail API、Google Auth Platform 與 OAuth client 位於同一個 Cloud 專案。</li>
-          <li>Audience 允許實際寄件帳號；External Testing 已把該帳號加入 Test users。</li>
-          <li>Data Access 只加入需要的 <code>gmail.send</code>，client 類型是 Desktop app。</li>
+          <li>Gmail API、Google Auth Platform 與 OAuth 用戶端位於同一個 Cloud 專案。</li>
+          <li>「目標對象」允許實際寄件帳號；「外部」＋「測試」已把該帳號加入「測試使用者」。</li>
+          <li>
+            「資料存取權」只加入需要的 <code>gmail.send</code>，用戶端類型是「電腦版應用程式」。
+          </li>
           <li>
             <code>credentials/gmail-oauth-client.json</code> 已放好，檔名只有一個
             <code>.json</code>。
@@ -841,11 +847,17 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
             <tbody>
               <tr>
                 <th scope="row">redirect_uri_mismatch</th>
-                <td>重新下載 Desktop app OAuth JSON；Web client 或 service account 都不適用。</td>
+                <td>
+                  重新建立「電腦版應用程式」OAuth 用戶端，並在完成畫面立即下載 JSON；
+                  「網頁應用程式」或服務帳戶都不適用。
+                </td>
               </tr>
               <tr>
                 <th scope="row">access_denied</th>
-                <td>External Testing 將寄件帳號加入 Test users；組織政策封鎖時聯絡管理員。</td>
+                <td>
+                  使用者類型為「外部」且發布狀態為「測試」時，把寄件帳號加入「測試使用者」；
+                  組織政策封鎖時聯絡管理員。
+                </td>
               </tr>
               <tr>
                 <th scope="row">找不到授權</th>
@@ -1710,7 +1722,7 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
                 href="https://support.google.com/cloud/answer/15549945"
                 target="_blank"
                 rel="noopener noreferrer"
-                >Google Auth Platform：Audience 與 Testing</a
+                >Google Auth Platform：目標對象與測試狀態</a
               >
             </li>
           </ul>

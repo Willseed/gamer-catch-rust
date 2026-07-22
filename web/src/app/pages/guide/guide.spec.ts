@@ -95,11 +95,12 @@ describe('GuidePage high-risk contracts', () => {
     expect(text).toContain('這個網站不收憑證');
     expect(text).toContain('不能同時搜尋手機與 PC 排行榜');
 
-    expect(gmailText).toContain('Desktop app（電腦版應用程式）');
+    expect(gmailText).toContain('「電腦版應用程式」');
     expect(gmailText).toContain('https://www.googleapis.com/auth/gmail.send');
-    expect(gmailText).toContain('External Testing 已把該帳號加入 Test users');
+    expect(gmailText).toContain('「外部」＋「測試」已把該帳號加入「測試使用者」');
+    expect(gmailText).toContain('目前的 Google Cloud 介面無法從「用戶端」清單重新查看');
     expect(gmailText).toContain('credentials/gmail-oauth-client.json');
-    expect(gmailText).toContain('refresh token 通常會在 7 天後失效');
+    expect(gmailText).toContain('更新權杖（refresh token）通常會在 7 天後失效');
     expect(
       gmailSection?.querySelector('a[href="/guide#gmail-authorization"]')?.textContent,
     ).toContain('完成 Gmail 首次授權');

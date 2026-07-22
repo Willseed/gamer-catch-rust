@@ -151,7 +151,6 @@ New-Item -ItemType Directory -Path $OutputDir | Out-Null
 $PackagedExe = Join-Path $OutputDir "GamerCatch.exe"
 Copy-Item -LiteralPath $BinaryPath -Destination $PackagedExe
 Copy-Item -LiteralPath (Join-Path $ProjectDir "config.example.toml") -Destination $OutputDir
-Copy-Item -LiteralPath (Join-Path $ProjectDir "config.example.toml") -Destination (Join-Path $OutputDir "config.toml")
 Copy-Item -LiteralPath (Join-Path $ProjectDir "README.md") -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "LICENSE") -Destination $OutputDir
 Copy-Item -LiteralPath (Join-Path $ProjectDir "THIRD_PARTY_NOTICES.md") -Destination $OutputDir

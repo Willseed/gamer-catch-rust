@@ -5,12 +5,38 @@
       <h1 id="generator-title">設定檔產生器</h1>
       <p class="lead">
         依序填入遊戲、試算表與通知設定，再下載
-        <code>config.toml</code>。所有內容只在你的瀏覽器記憶體中處理，不會傳到伺服器。
+        <code>config.toml</code>。內容只在你的瀏覽器中處理，不會傳到伺服器。
       </p>
       <app-setup-progress [currentStep]="2" />
       <div class="privacy-note" role="note">
         <strong>安全提醒：</strong>service account 與 Gmail OAuth 都只填 JSON 檔名；請勿貼上路徑或
         JSON 內容。
+      </div>
+      <div class="draft-note" role="note" aria-labelledby="draft-note-title">
+        <div>
+          <strong id="draft-note-title">這台瀏覽器會自動保留草稿 30 天</strong>
+          <p>
+            草稿會寫入本機儲存空間（Local Storage），包含遊戲名稱、試算表網址或
+            ID、憑證檔名與通知電子郵件，但不包含 JSON 內容。Local Storage
+            不是加密保管庫；資料不會上傳，但同一瀏覽器中的網站程式可讀取。若使用共用電腦，完成後請清除草稿。
+          </p>
+          <output class="draft-status" aria-live="polite">{{ draftStatus() }}</output>
+        </div>
+        <div class="draft-controls">
+          <label class="toggle-row draft-toggle">
+            <input
+              #autoSaveToggle
+              type="checkbox"
+              [checked]="autoSaveEnabled()"
+              [disabled]="draftConflict()"
+              (change)="setAutoSaveEnabled(autoSaveToggle.checked)"
+            />
+            <span>自動儲存草稿（記住此選擇）</span>
+          </label>
+          <button type="button" class="draft-clear-button" (click)="clearSavedDraft()">
+            清除草稿並重新開始
+          </button>
+        </div>
       </div>
     </div>
   </section>
@@ -158,6 +184,7 @@
                   type="text"
                   formControlName="gameName"
                   placeholder="例如：夜鴉"
+                  maxlength="512"
                   autocomplete="off"
                   [required]="game.controls.enabled.value"
                   [attr.data-config-path]="'games.' + index + '.gameName'"
@@ -176,6 +203,7 @@
                   type="text"
                   formControlName="worksheetName"
                   placeholder="每日排名"
+                  maxlength="512"
                   autocomplete="off"
                   [required]="game.controls.enabled.value"
                   [attr.data-config-path]="'games.' + index + '.worksheetName'"
@@ -216,6 +244,7 @@
                   type="text"
                   formControlName="spreadsheetId"
                   placeholder="https://docs.google.com/spreadsheets/d/..."
+                  maxlength="2048"
                   autocomplete="off"
                   [required]="game.controls.enabled.value"
                   [attr.data-config-path]="'games.' + index + '.spreadsheetId'"
@@ -238,6 +267,7 @@
                     type="text"
                     formControlName="serviceAccountKeyFileName"
                     placeholder="person-1-service-account.json"
+                    maxlength="255"
                     autocomplete="off"
                     spellcheck="false"
                     [required]="game.controls.enabled.value"
@@ -316,6 +346,7 @@
                   rows="3"
                   formControlName="notificationRecipientsText"
                   placeholder="owner@example.com&#10;backup@example.com"
+                  maxlength="16384"
                   [attr.data-config-path]="'games.' + index + '.notificationRecipients'"
                   [attr.aria-invalid]="
                     isInvalidField('games.' + index + '.notificationRecipients') || null
@@ -381,6 +412,7 @@
               type="email"
               formControlName="senderEmail"
               placeholder="sender@gmail.com"
+              maxlength="254"
               autocomplete="email"
               required
               data-config-path="gmail.senderEmail"
@@ -405,6 +437,7 @@
               rows="3"
               formControlName="defaultRecipientsText"
               placeholder="owner@example.com&#10;backup@example.com"
+              maxlength="16384"
               data-config-path="gmail.defaultRecipients"
               [attr.aria-invalid]="isInvalidField('gmail.defaultRecipients') || null"
               (blur)="syncDefaultRecipientsOnBlur()"
@@ -422,6 +455,7 @@
                 type="text"
                 formControlName="oauthClientSecretFileName"
                 placeholder="gmail-oauth-client.json"
+                maxlength="255"
                 autocomplete="off"
                 spellcheck="false"
                 required

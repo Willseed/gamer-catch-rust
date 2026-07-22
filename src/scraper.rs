@@ -387,26 +387,17 @@ mod tests {
     }
 
     #[test]
-    fn builds_floating_page_url() {
+    fn builds_expected_ranking_urls_and_rejects_redirects() {
         assert_eq!(
             ranking_url(&test_config(), 7).unwrap().as_str(),
             "https://forum.gamer.com.tw/?c=30&page=7"
         );
-    }
-
-    #[test]
-    fn builds_pc_ranking_url() {
         let mut config = test_config();
         config.bahamut.category = 500;
-
         assert_eq!(
             ranking_url(&config, 7).unwrap().as_str(),
             "https://forum.gamer.com.tw/?c=500&page=7"
         );
-    }
-
-    #[test]
-    fn rejects_redirect_to_wrong_page() {
         assert!(
             validate_final_url("https://forum.gamer.com.tw/?c=30&page=8", &test_config(), 7)
                 .is_err()
@@ -414,25 +405,17 @@ mod tests {
     }
 
     #[test]
-    fn exact_match_uses_unicode_normalization() {
+    fn requires_one_normalized_exact_game_match() {
         let cards = vec![card("別的遊戲", "1", "100"), card(" 夜鴉 ", "42", "9876")];
         assert_eq!(select_game(&cards, "夜鴉").unwrap(), Some((42, 9876)));
-    }
-
-    #[test]
-    fn partial_title_does_not_match() {
         let cards = vec![card("夜鴉：續作", "42", "9876")];
         assert_eq!(select_game(&cards, "夜鴉").unwrap(), None);
-    }
-
-    #[test]
-    fn rejects_duplicate_exact_matches() {
         let cards = vec![card("夜鴉", "42", "1"), card("夜鴉", "43", "2")];
         assert!(select_game(&cards, "夜鴉").is_err());
     }
 
     #[test]
-    fn records_game_specific_metric_errors_without_stopping_other_games() {
+    fn records_results_in_config_order_and_isolates_game_failures() {
         let config = test_config();
         let cards = vec![
             card("夜鴉", "不是數字", "9876"),
@@ -456,11 +439,7 @@ mod tests {
         }));
         assert_eq!(results[1].as_ref().map(|metrics| metrics.rank), Some(8));
         assert!(failures[1].is_none());
-    }
 
-    #[test]
-    fn records_multiple_games_in_config_order() {
-        let config = test_config();
         let cards = vec![card("另一款遊戲", "8", "200"), card("夜鴉", "42", "9876")];
         let mut results = vec![None; config.games.len()];
         let mut failures = vec![None; config.games.len()];

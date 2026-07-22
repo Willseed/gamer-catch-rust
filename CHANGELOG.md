@@ -2,11 +2,18 @@
 
 ## Unreleased
 
+## 0.2.1 - 2026-07-22
+
 - 新增 Angular 22／TypeScript 6 網站與零程式設定產生器，支援多遊戲、多 Google Sheets、多人帳號與多人 Gmail 收件人。
-- 新增高對比 PlayStation-inspired 首頁、下載頁，以及可用 `#fragment` 直接分享的完整繁中線上教學。
-- 移除 PDF 手冊、產生器與發行資產，改以 `https://gamer-catch.pylot.dev` 作為唯一教學來源。
+- 新增高對比 PlayStation-inspired 首頁、自動辨識平台與顯示進度的下載頁，以及可用 `#fragment` 直接分享的完整繁中線上教學；Linux 會明確提示目前不支援且不會開始下載。
+- 移除 PDF 手冊與發行資產，改以 `https://gamer-catch.pylot.dev` 作為唯一教學來源；首次設定只開啟 `credentials` 資料夾與線上指南，不再開啟 TOML 編輯器。
+- 發行 ZIP 不再附帶可被誤覆寫的 `config.toml`，只保留安全的 `config.example.toml`；首次設定、開始抓取與 Gmail 授權腳本都不會建立或覆蓋使用者設定，缺少設定時會引導至網頁產生器。
+- 大幅補強 Gmail Desktop OAuth 新手教學，逐步說明 Gmail API、Branding、Audience、Test users、最小 `gmail.send` scope、Desktop client 與 JSON 放置方式，並保留 External Testing 權杖通常七天失效的提醒。
+- 設定產生器會在同一瀏覽器的 Local Storage 自動保留草稿 30 天，提供清除草稿功能，並限制版本、期限、欄位型別、長度與總大小；草稿不包含 JSON 憑證內容，也不會傳送至伺服器。
+- 設定產生器會在下載或複製前檢核所有必填欄位，平滑定位至最上方未完成欄位；service account 與 Gmail OAuth 只接受 JSON 檔名，遊戲專用通知收件人會安全同步至預設收件人。
 - 新增 Node.js 24 網站 CI、Cloudflare Pages deployment workflow、安全標頭、SPA fallback 與 custom-domain 檢查。
-- 更新 macOS／Windows 發行腳本、ZIP 驗證、README 與離線說明，使首次設定直接開啟線上教學。
+- 更新 macOS／Windows 發行腳本、ZIP 驗證、README 與離線說明，並收斂 Web 與 Rust 重複測試；保留 TOML、憑證路徑、Google Sheets 目標、OAuth、下載完整性與導覽等高風險契約。
+- macOS 發行包目前仍未使用 Developer ID 簽章及 Apple 公證，因此第一次執行 `.command` 仍可能需要由 Finder 核准；本版不會停用或繞過 Gatekeeper。
 
 ## 0.2.0 - 2026-07-21
 

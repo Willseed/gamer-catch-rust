@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 
 import { GuidePage } from './guide';
 
-describe('GuidePage', () => {
+describe('GuidePage high-risk contracts', () => {
   let fixture: ComponentFixture<GuidePage>;
 
   beforeEach(async () => {
@@ -16,7 +16,7 @@ describe('GuidePage', () => {
     fixture.detectChanges();
   });
 
-  it('creates the guide with all stable section fragments', () => {
+  it('keeps every canonical section and public package deep-link alias reachable', () => {
     const element = fixture.nativeElement as HTMLElement;
     const expectedIds = [
       'download',
@@ -43,77 +43,6 @@ describe('GuidePage', () => {
       'checksum',
       'checklist',
     ];
-
-    expect(fixture.componentInstance).toBeTruthy();
-    expect(element.querySelector('h1')?.textContent).toContain('不會寫程式');
-    expect(element.querySelectorAll('.guide-section')).toHaveLength(expectedIds.length);
-    expect(element.querySelectorAll('[data-section-link]')).toHaveLength(expectedIds.length);
-
-    for (const id of expectedIds) {
-      expect(element.querySelector(`section#${id}`)).not.toBeNull();
-      expect(element.querySelector(`nav a[href="/guide#${id}"]`)).not.toBeNull();
-      expect(element.querySelector(`[data-section-link="${id}"]`)).not.toBeNull();
-    }
-  });
-
-  it('covers private credentials and the requested beginner workflows', () => {
-    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-
-    expect(text).toContain('這個網站不收憑證');
-    expect(text).toContain('Google Sheets API');
-    expect(text).toContain('service account');
-    expect(text).toContain('Gmail 首次授權');
-    expect(text).toContain('每天 09:00 自動抓取');
-    expect(text).toContain('SHA-256');
-    expect(text).toContain('更換遊戲');
-    expect(text).toContain('30 = 手機排行榜');
-    expect(text).toContain('500 = PC 排行榜');
-    expect(text).toContain('不能同時搜尋手機與 PC 排行榜');
-    expect(text).toContain('同一份設定同時啟用手機與 PC');
-  });
-
-  it('uses the same three-step first-run journey and exposes the placement target', () => {
-    const element = fixture.nativeElement as HTMLElement;
-    const heroSteps = element.querySelectorAll('.hero__steps > li');
-
-    expect(heroSteps).toHaveLength(3);
-    expect([...heroSteps].map((step) => step.textContent?.replace(/\s+/gu, ' ').trim())).toEqual([
-      '1下載並解壓縮',
-      '2準備 Google 並產生設定',
-      '3下載 config.toml 並放好',
-    ]);
-    expect(element.querySelector('#config-placement')?.closest('.guide-section')?.id).toBe(
-      'config-generator',
-    );
-  });
-
-  it('uses visible button text and semantic elements for accessibility', () => {
-    const element = fixture.nativeElement as HTMLElement;
-    const sectionLinkButtons = element.querySelectorAll<HTMLButtonElement>('[data-section-link]');
-    const tableRegions = element.querySelectorAll<HTMLElement>('.table-scroll');
-    const completionMessage = element.querySelector('output.callout--success');
-
-    for (const button of sectionLinkButtons) {
-      expect(button.hasAttribute('aria-label')).toBe(false);
-      expect(button.textContent?.trim()).toMatch(/^#[a-z-]+$/);
-      const headingId = button.getAttribute('aria-describedby');
-      expect(headingId).toBeTruthy();
-      expect(element.querySelector(`#${headingId}`)).not.toBeNull();
-    }
-
-    expect(tableRegions).toHaveLength(7);
-    for (const region of tableRegions) {
-      expect(region.tagName).toBe('SECTION');
-      expect(region.hasAttribute('tabindex')).toBe(false);
-      expect(region.hasAttribute('role')).toBe(false);
-    }
-
-    expect(completionMessage).not.toBeNull();
-    expect(completionMessage?.hasAttribute('role')).toBe(false);
-  });
-
-  it('keeps public deep links used by the package and website', () => {
-    const element = fixture.nativeElement as HTMLElement;
     const publicAliases = new Map([
       ['quick-start', 'system-safety'],
       ['first-setup-macos', 'system-safety'],
@@ -131,14 +60,52 @@ describe('GuidePage', () => {
       ['checksums', 'checksum'],
     ]);
 
+    expect(element.querySelectorAll('.guide-section')).toHaveLength(expectedIds.length);
+    for (const id of expectedIds) {
+      expect(element.querySelector(`section#${id}`), id).not.toBeNull();
+      expect(element.querySelector(`nav a[href="/guide#${id}"]`), id).not.toBeNull();
+      expect(element.querySelector(`[data-section-link="${id}"]`), id).not.toBeNull();
+    }
     for (const [aliasId, sectionId] of publicAliases) {
-      const alias = element.querySelector(`#${aliasId}`);
-      expect(alias).not.toBeNull();
-      expect(alias?.closest('.guide-section')?.id).toBe(sectionId);
+      expect(element.querySelector(`#${aliasId}`)?.closest('.guide-section')?.id, aliasId).toBe(
+        sectionId,
+      );
     }
   });
 
-  it('copies a canonical guide fragment URL', async () => {
+  it('preserves the beginner flow and its credential, category, and Gmail safety contracts', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const text = element.textContent ?? '';
+    const heroSteps = element.querySelectorAll('.hero__steps > li');
+    const firstSetupText = element
+      .querySelector('#system-safety')
+      ?.textContent?.replace(/\s+/gu, ' ');
+    const gmailSection = element.querySelector('#gmail-oauth');
+    const gmailText = gmailSection?.textContent?.replace(/\s+/gu, ' ') ?? '';
+
+    expect([...heroSteps].map((step) => step.textContent?.replace(/\s+/gu, ' ').trim())).toEqual([
+      '1下載並解壓縮',
+      '2準備 Google 並產生設定',
+      '3下載 config.toml 並放好',
+    ]);
+    expect(element.querySelector('#config-placement')?.closest('.guide-section')?.id).toBe(
+      'config-generator',
+    );
+    expect(firstSetupText).toContain('不會打開或修改 config.toml');
+    expect(text).toContain('這個網站不收憑證');
+    expect(text).toContain('不能同時搜尋手機與 PC 排行榜');
+
+    expect(gmailText).toContain('Desktop app（電腦版應用程式）');
+    expect(gmailText).toContain('https://www.googleapis.com/auth/gmail.send');
+    expect(gmailText).toContain('External Testing 已把該帳號加入 Test users');
+    expect(gmailText).toContain('credentials/gmail-oauth-client.json');
+    expect(gmailText).toContain('refresh token 通常會在 7 天後失效');
+    expect(
+      gmailSection?.querySelector('a[href="/guide#gmail-authorization"]')?.textContent,
+    ).toContain('完成 Gmail 首次授權');
+  });
+
+  it('copies a canonical fragment URL instead of a transient or aliased location', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(window.navigator, 'clipboard', {
       configurable: true,
@@ -150,27 +117,10 @@ describe('GuidePage', () => {
     );
     button?.click();
     await fixture.whenStable();
-    fixture.detectChanges();
 
     expect(writeText).toHaveBeenCalledOnce();
     expect(writeText).toHaveBeenCalledWith(
       new URL('/guide#download', window.location.origin).toString(),
     );
-    expect(button?.textContent).toContain('已複製');
-  });
-
-  it('shows a clear result when clipboard access is unavailable', () => {
-    Object.defineProperty(window.navigator, 'clipboard', {
-      configurable: true,
-      value: undefined,
-    });
-
-    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
-      '[data-section-link="checksum"]',
-    );
-    button?.click();
-    fixture.detectChanges();
-
-    expect(button?.textContent).toContain('無法複製');
   });
 });

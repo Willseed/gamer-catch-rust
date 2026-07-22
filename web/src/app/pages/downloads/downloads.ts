@@ -109,6 +109,10 @@ function formatBytes(value: number): string {
   return `${size.toFixed(size >= 10 ? 1 : 2)} ${units[unitIndex]}`;
 }
 
+function isZipContentType(value: string | null): boolean {
+  return value?.split(';', 1)[0]?.trim().toLowerCase() === 'application/zip';
+}
+
 @Component({
   selector: 'app-downloads',
   imports: [RouterLink, SetupProgressComponent],
@@ -298,6 +302,7 @@ export class DownloadsPage {
             const isReleaseDownload = event.headers.get('X-GamerCatch-Download') === 'release';
             if (
               !isReleaseDownload ||
+              !isZipContentType(event.headers.get('Content-Type')) ||
               !event.body ||
               event.body.size === 0 ||
               !this.saveBlob(event.body, RELEASE_DOWNLOADS[platform].fileName)

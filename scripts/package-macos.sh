@@ -105,7 +105,6 @@ fi
 mkdir -p "$OUTPUT_DIR/credentials"
 cp "$BINARY_PATH" "$OUTPUT_DIR/GamerCatch"
 cp "$PROJECT_DIR/config.example.toml" "$OUTPUT_DIR/"
-cp "$PROJECT_DIR/config.example.toml" "$OUTPUT_DIR/config.toml"
 cp "$PROJECT_DIR/README.md" "$OUTPUT_DIR/"
 cp "$PROJECT_DIR/LICENSE" "$OUTPUT_DIR/"
 cp "$PROJECT_DIR/THIRD_PARTY_NOTICES.md" "$OUTPUT_DIR/"

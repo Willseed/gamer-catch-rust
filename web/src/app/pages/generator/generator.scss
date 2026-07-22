@@ -26,6 +26,65 @@
   color: var(--text-on-dark);
 }
 
+.draft-note {
+  display: flex;
+  max-width: 52rem;
+  justify-content: space-between;
+  gap: 1.25rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #7f91a3;
+  border-radius: var(--radius-card);
+  background: #101820;
+  color: var(--text-on-dark);
+}
+
+.draft-note p {
+  margin: 0.35rem 0;
+  color: var(--muted-on-dark);
+  line-height: 1.55;
+}
+
+.draft-status {
+  display: block;
+  color: var(--focus);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.draft-controls {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+
+.draft-toggle {
+  min-height: auto;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.draft-clear-button {
+  min-height: 2.75rem;
+  flex: 0 0 auto;
+  padding-inline: 1rem;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.draft-clear-button:hover {
+  background: #fff;
+  color: #101820;
+}
+
 .generator-form {
   padding-block: clamp(3rem, 7vw, 6rem);
 }
@@ -456,5 +515,14 @@ button:disabled {
   .game-card > .toggle-panel,
   .game-card > .sheets-fields {
     margin-inline: 1rem;
+  }
+
+  .draft-note {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .draft-clear-button {
+    align-self: stretch;
   }
 }

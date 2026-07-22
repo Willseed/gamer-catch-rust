@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 CONFIG_PATH="$SCRIPT_DIR/config.toml"
 BINARY_PATH="$SCRIPT_DIR/GamerCatch"
 LOG_PATH="$SCRIPT_DIR/last-gmail-authorization.log"
+GENERATOR_URL="https://gamer-catch.pylot.dev/generator"
 
 pause_and_exit() {
   local exit_code="$1"
@@ -15,9 +16,10 @@ pause_and_exit() {
 
 cd "$SCRIPT_DIR" || exit 1
 if [[ ! -f "$CONFIG_PATH" ]]; then
-  cp "$SCRIPT_DIR/config.example.toml" "$CONFIG_PATH"
-  open -a TextEdit "$CONFIG_PATH"
-  echo "尚未設定。請先填完 [gmail_notifications]，再雙擊本檔。"
+  echo "找不到 config.toml；本腳本不會自動建立或覆蓋設定檔。"
+  echo "請前往設定檔產生器完成 Gmail 設定並下載 config.toml，放到 GamerCatch 資料夾最外層："
+  echo "$GENERATOR_URL"
+  echo "放好設定檔後，請再雙擊本檔。"
   pause_and_exit 1
 fi
 if [[ ! -x "$BINARY_PATH" ]]; then

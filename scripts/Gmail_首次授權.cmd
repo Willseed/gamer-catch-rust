@@ -6,6 +6,7 @@ set "BASE=%~dp0"
 set "CONFIG=%BASE%config.toml"
 set "APP=%BASE%GamerCatch.exe"
 set "LOG=%BASE%last-gmail-authorization.log"
+set "GENERATOR_URL=https://gamer-catch.pylot.dev/generator"
 
 pushd "%BASE%" >nul
 if not exist "%CONFIG%" goto :missing_config
@@ -26,10 +27,11 @@ echo Gmail 授權或測試信未完成，請查看上方訊息或 last-gmail-aut
 goto :done
 
 :missing_config
-copy /Y "%BASE%config.example.toml" "%CONFIG%" >nul
-start "" notepad.exe "%CONFIG%"
 set "RC=1"
-echo 尚未設定。請先填完 [gmail_notifications]，再雙擊本檔。
+echo 找不到 config.toml；本腳本不會自動建立或覆蓋設定檔。
+echo 請前往設定檔產生器完成 Gmail 設定並下載 config.toml，放到 GamerCatch 資料夾最外層：
+echo %GENERATOR_URL%
+echo 放好設定檔後，請再雙擊本檔。
 goto :done
 
 :incomplete

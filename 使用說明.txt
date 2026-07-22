@@ -2,13 +2,13 @@
 
 完整線上教學：https://gamer-catch.pylot.dev/guide#quick-start
 
-網頁教學會隨工具更新，發行包不再內附 PDF。
+完整操作說明統一由網頁維護並隨工具更新，發行包不附 PDF。
 
 第一次使用
 1. 先將整個發行資料夾解壓縮，不要直接在 ZIP 內執行。
 2. macOS 雙擊「1_首次設定.command」；Windows 雙擊「1_首次設定.cmd」。
-3. 首次設定會安裝 Chromium，開啟 config.toml、credentials 資料夾與線上教學。
-4. 依線上教學產生設定檔，並完成 Google Sheets 與選用的 Gmail 設定。
+3. 首次設定會安裝 Chromium，只開啟 credentials 資料夾與線上教學，不會打開或修改 config.toml。
+4. 依線上教學使用設定產生器下載 config.toml，放到 GamerCatch 資料夾最外層，再完成 Google Sheets 與選用的 Gmail 設定。
 
 平常執行
 - macOS：雙擊「2_開始抓取.command」。

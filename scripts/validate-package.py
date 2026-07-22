@@ -14,9 +14,11 @@ from pathlib import PurePosixPath
 
 
 CONFIG_FILENAME = "config.toml"
+EXAMPLE_CONFIG_FILENAME = "config.example.toml"
 CREDENTIALS_DIRECTORY = "credentials"
 USAGE_FILENAME = "使用說明.txt"
 WEB_GUIDE_URL = "https://gamer-catch.pylot.dev/guide#quick-start"
+CONFIG_GENERATOR_URL = "https://gamer-catch.pylot.dev/generator"
 WINDOWS_STARTER_ENTRY = "1_首次設定.cmd"
 WINDOWS_RUNNER_ENTRY = "2_開始抓取.cmd"
 WINDOWS_GMAIL_AUTHORIZER_ENTRY = "Gmail_首次授權.cmd"
@@ -38,8 +40,7 @@ COMMON_REQUIRED = {
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     USAGE_FILENAME,
-    "config.example.toml",
-    CONFIG_FILENAME,
+    EXAMPLE_CONFIG_FILENAME,
 }
 
 
@@ -107,16 +108,16 @@ def contains_forbidden_key(value: object, forbidden: set[str]) -> bool:
     return False
 
 
-def validate_config(data: bytes) -> None:
+def validate_example_config(data: bytes) -> None:
     try:
         config = tomllib.load(io.BytesIO(data))
     except (tomllib.TOMLDecodeError, UnicodeDecodeError) as error:
-        fail(f"config.toml is invalid: {error}")
+        fail(f"{EXAMPLE_CONFIG_FILENAME} is invalid: {error}")
     if config.get("schema_version") != 2:
-        fail("config.toml must use schema_version = 2")
+        fail(f"{EXAMPLE_CONFIG_FILENAME} must use schema_version = 2")
     games = config.get("games")
     if not isinstance(games, list) or len(games) < 3:
-        fail("config.toml must contain at least three beginner game slots")
+        fail(f"{EXAMPLE_CONFIG_FILENAME} must contain at least three beginner game slots")
     if sum(bool(game.get("enabled")) for game in games) != 1:
         fail("safe example must enable exactly one game")
     if any(bool(game.get("write_to_google_sheets")) for game in games):
@@ -128,7 +129,7 @@ def validate_config(data: bytes) -> None:
         fail("safe example must use the documented Gmail OAuth JSON path")
     forbidden_secret_keys = {"access_token", "client_secret", "private_key", "refresh_token"}
     if contains_forbidden_key(config, forbidden_secret_keys):
-        fail("config.toml unexpectedly contains inline secret material")
+        fail(f"{EXAMPLE_CONFIG_FILENAME} unexpectedly contains inline secret material")
     for game in games:
         recipients = game.get("notification_recipients")
         if not isinstance(recipients, list):
@@ -159,19 +160,36 @@ def validate_zip_structure(archive: zipfile.ZipFile) -> list[str]:
     if len(roots) != 1:
         fail(f"ZIP must contain exactly one top-level folder, found: {sorted(roots)}")
 
+    toml_entries = []
     for entry in entries:
         parsed = PurePosixPath(entry)
         if parsed.is_absolute() or ".." in parsed.parts:
             fail(f"unsafe ZIP path: {entry}")
+        if parsed.name == CONFIG_FILENAME:
+            fail(
+                f"release ZIP must not include mutable {CONFIG_FILENAME}; "
+                f"users download it from the configuration generator: {entry}"
+            )
+        if parsed.suffix.lower() == ".toml" and parsed.name != EXAMPLE_CONFIG_FILENAME:
+            fail(
+                f"release ZIP may only include {EXAMPLE_CONFIG_FILENAME} as TOML: {entry}"
+            )
+        if parsed.suffix.lower() == ".toml":
+            toml_entries.append(entry)
         if parsed.suffix.lower() == ".pdf":
             fail(f"release ZIP must use the online guide instead of PDF: {entry}")
+    if len(toml_entries) != 1:
+        fail(
+            f"release ZIP must contain exactly one {EXAMPLE_CONFIG_FILENAME}; "
+            f"found: {toml_entries}"
+        )
     return entries
 
 
 def validate_required_files(
     archive: zipfile.ZipFile, entries: list[str], files: PlatformFiles
 ) -> tuple[bytes, bytes]:
-    existence_only = (COMMON_REQUIRED - {CONFIG_FILENAME, USAGE_FILENAME}) | {
+    existence_only = (COMMON_REQUIRED - {EXAMPLE_CONFIG_FILENAME, USAGE_FILENAME}) | {
         files.starter,
         files.runner,
         files.gmail_authorizer,
@@ -180,7 +198,7 @@ def validate_required_files(
     for required in existence_only:
         read_required(archive, entries, required)
 
-    validate_config(read_required(archive, entries, CONFIG_FILENAME))
+    validate_example_config(read_required(archive, entries, EXAMPLE_CONFIG_FILENAME))
     usage = decode_utf8(read_required(archive, entries, USAGE_FILENAME), USAGE_FILENAME)
     require_markers(usage, (WEB_GUIDE_URL,), USAGE_FILENAME)
     return (
@@ -193,6 +211,13 @@ def require_markers(text: str, markers: tuple[str, ...], name: str) -> None:
     missing = [marker for marker in markers if marker not in text]
     if missing:
         fail(f"{name} is missing required markers: {missing}")
+
+
+def reject_markers(text: str, markers: tuple[str, ...], name: str) -> None:
+    normalized = text.casefold()
+    found = [marker for marker in markers if marker.casefold() in normalized]
+    if found:
+        fail(f"{name} contains retired config creation or editor markers: {found}")
 
 
 def decode_utf8(data: bytes, name: str) -> str:
@@ -269,10 +294,16 @@ def validate_windows_scheduler(
     require_markers(
         runner,
         (
+            CONFIG_GENERATOR_URL,
             "goto :run_failed",
             "--no-pause",
             "有項目未完成，請查看上方錯誤訊息或 last-run.log。",
         ),
+        WINDOWS_RUNNER_ENTRY,
+    )
+    reject_markers(
+        runner,
+        (EXAMPLE_CONFIG_FILENAME, "notepad.exe", "start "),
         WINDOWS_RUNNER_ENTRY,
     )
 
@@ -280,6 +311,7 @@ def validate_windows_scheduler(
     require_markers(
         gmail_authorizer,
         (
+            CONFIG_GENERATOR_URL,
             "--authorize-gmail",
             "last-gmail-authorization.log",
             "goto :authorization_failed",
@@ -287,9 +319,23 @@ def validate_windows_scheduler(
         ),
         WINDOWS_GMAIL_AUTHORIZER_ENTRY,
     )
+    reject_markers(
+        gmail_authorizer,
+        (EXAMPLE_CONFIG_FILENAME, "notepad.exe", "start "),
+        WINDOWS_GMAIL_AUTHORIZER_ENTRY,
+    )
 
     starter = commands[WINDOWS_STARTER_ENTRY]
-    require_markers(starter, (WEB_GUIDE_URL,), WINDOWS_STARTER_ENTRY)
+    require_markers(
+        starter,
+        (WEB_GUIDE_URL, 'explorer.exe "%CREDENTIALS%"'),
+        WINDOWS_STARTER_ENTRY,
+    )
+    reject_markers(
+        starter,
+        ('set "CONFIG=', EXAMPLE_CONFIG_FILENAME, "copy /Y", "notepad.exe"),
+        WINDOWS_STARTER_ENTRY,
+    )
 
     entry = commands[WINDOWS_SCHEDULER_ENTRY]
     require_markers(
@@ -343,8 +389,35 @@ def validate_macos_gmail_authorizer(
     script = decode_utf8(data, files.gmail_authorizer)
     require_markers(
         script,
-        ("--authorize-gmail", "last-gmail-authorization.log", "set -uo pipefail"),
+        (
+            CONFIG_GENERATOR_URL,
+            "--authorize-gmail",
+            "last-gmail-authorization.log",
+            "set -uo pipefail",
+        ),
         files.gmail_authorizer,
+    )
+    reject_markers(
+        script,
+        (EXAMPLE_CONFIG_FILENAME, "TextEdit", "open "),
+        files.gmail_authorizer,
+    )
+
+
+def validate_macos_runner(
+    archive: zipfile.ZipFile, entries: list[str], files: PlatformFiles
+) -> None:
+    data = read_required(archive, entries, files.runner)
+    script = decode_utf8(data, files.runner)
+    require_markers(
+        script,
+        (CONFIG_GENERATOR_URL, "last-run.log", "set -uo pipefail"),
+        files.runner,
+    )
+    reject_markers(
+        script,
+        (EXAMPLE_CONFIG_FILENAME, "TextEdit", "open "),
+        files.runner,
     )
 
 
@@ -353,7 +426,16 @@ def validate_macos_starter(
 ) -> None:
     data = read_required(archive, entries, files.starter)
     script = decode_utf8(data, files.starter)
-    require_markers(script, (WEB_GUIDE_URL,), files.starter)
+    require_markers(
+        script,
+        (WEB_GUIDE_URL, 'open "$CREDENTIALS_DIR"'),
+        files.starter,
+    )
+    reject_markers(
+        script,
+        ("CONFIG_PATH=", EXAMPLE_CONFIG_FILENAME, "cp ", "TextEdit"),
+        files.starter,
+    )
 
 
 def validate_empty_credentials_directory(
@@ -388,6 +470,7 @@ def validate_archive(path: str, platform: str) -> None:
         if platform == "macos":
             validate_macos_executable_modes(archive, entries, files)
             validate_macos_gmail_authorizer(archive, entries, files)
+            validate_macos_runner(archive, entries, files)
             validate_macos_starter(archive, entries, files)
         else:
             validate_windows_scheduler(archive, entries)

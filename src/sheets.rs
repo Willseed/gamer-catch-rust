@@ -183,29 +183,16 @@ mod tests {
     }
 
     #[test]
-    fn accepts_supported_date_formats() {
+    fn parses_only_supported_dates_with_their_actual_year() {
         let expected = NaiveDate::from_ymd_opt(2026, 7, 21).unwrap();
         for value in ["2026-07-21", "2026/7/21", "07/21/2026"] {
             assert_eq!(parse_sheet_date(&json!(value)), Some(expected));
         }
-    }
-
-    #[test]
-    fn rejects_yearless_text_dates() {
         assert_eq!(parse_sheet_date(&json!("7/21")), None);
-    }
 
-    #[test]
-    fn parses_unformatted_google_serial_dates() {
         let epoch = NaiveDate::from_ymd_opt(1899, 12, 30).unwrap();
-        let expected = NaiveDate::from_ymd_opt(2026, 7, 21).unwrap();
         let serial = (expected - epoch).num_days();
         assert_eq!(parse_sheet_date(&json!(serial)), Some(expected));
-    }
-
-    #[test]
-    fn serial_date_preserves_the_actual_year() {
-        let epoch = NaiveDate::from_ymd_opt(1899, 12, 30).unwrap();
         let old_date = NaiveDate::from_ymd_opt(2025, 7, 21).unwrap();
         let serial = (old_date - epoch).num_days();
         assert_ne!(
@@ -215,7 +202,7 @@ mod tests {
     }
 
     #[test]
-    fn finds_exactly_one_daily_row() {
+    fn requires_exactly_one_daily_row() {
         let rows = vec![
             vec![json!("日期")],
             vec![json!("2026-07-20")],
@@ -223,16 +210,11 @@ mod tests {
         ];
         let target = NaiveDate::from_ymd_opt(2026, 7, 21).unwrap();
         assert_eq!(find_date_row(&rows, target, 2).unwrap(), Some(3));
-    }
-
-    #[test]
-    fn rejects_duplicate_daily_rows() {
         let rows = vec![
             vec![json!("日期")],
             vec![json!("2026/7/21")],
             vec![json!("2026-07-21")],
         ];
-        let target = NaiveDate::from_ymd_opt(2026, 7, 21).unwrap();
         assert!(find_date_row(&rows, target, 2).is_err());
     }
 }

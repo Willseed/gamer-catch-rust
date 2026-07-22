@@ -15,18 +15,14 @@ describe('HomePage', () => {
     fixture.detectChanges();
   });
 
-  it('gives first-time visitors one primary action that starts with the download', () => {
+  it('gives first-time visitors one download-first path through all three setup steps', () => {
     const element = fixture.nativeElement as HTMLElement;
     const heroActions = element.querySelectorAll<HTMLAnchorElement>('.hero .primary-button');
+    const steps = element.querySelectorAll<HTMLElement>('.journey-list > li');
 
     expect(heroActions).toHaveLength(1);
     expect(heroActions[0].getAttribute('href')).toBe('/downloads');
     expect(heroActions[0].textContent).toContain('步驟 1：下載 GamerCatch');
-  });
-
-  it('explains the three setup steps in the required order', () => {
-    const element = fixture.nativeElement as HTMLElement;
-    const steps = element.querySelectorAll<HTMLElement>('.journey-list > li');
     const links = [...steps].map((step) => step.querySelector('a')?.getAttribute('href'));
 
     expect(steps).toHaveLength(3);

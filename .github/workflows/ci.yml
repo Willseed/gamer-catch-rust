@@ -82,15 +82,21 @@ jobs:
           $runnerOutputPath = Join-Path $testRoot 'runner-output.txt'
           $gmailEntry = Join-Path $testRoot 'gmail.cmd'
           $gmailOutputPath = Join-Path $testRoot 'gmail-output.txt'
+          $starterEntry = Join-Path $testRoot 'starter.cmd'
+          $starterOutputPath = Join-Path $testRoot 'starter-output.txt'
           try {
             New-Item -ItemType Directory -Path $testRoot | Out-Null
             New-Item -ItemType Directory -Path (Join-Path $testRoot 'credentials') | Out-Null
             New-Item -ItemType Directory -Path (Join-Path $testRoot 'playwright-driver\package') | Out-Null
+            Copy-Item -LiteralPath '.\config.example.toml' -Destination $testRoot
             $fakeSource = @'
           using System;
           public static class FakeGamerCatch {
               public static int Main(string[] args) {
                   Console.WriteLine("scheduled-test");
+                  if (args.Length == 1 && args[0] == "--install-browser") {
+                      return 0;
+                  }
                   if (args.Length == 2 && args[0] == "--config" && args[1].EndsWith("config.toml")) {
                       return 7;
                   }
@@ -104,17 +110,25 @@ jobs:
             Add-Type -TypeDefinition $fakeSource `
               -OutputAssembly (Join-Path $testRoot 'GamerCatch.exe') `
               -OutputType ConsoleApplication
-            Set-Content -LiteralPath (Join-Path $testRoot 'config.toml') -Value 'schema_version = 2'
+            $configPath = Join-Path $testRoot 'config.toml'
+            [System.IO.File]::WriteAllBytes(
+              $configPath,
+              [System.Text.Encoding]::UTF8.GetBytes("schema_version = 2`n# keep-user-config")
+            )
+            $configHashBefore = (Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash
             Set-Content -LiteralPath (Join-Path $testRoot 'playwright-driver\node.exe') -Value 'test'
             Set-Content -LiteralPath (Join-Path $testRoot 'playwright-driver\package\cli.js') -Value 'test'
             Copy-Item -LiteralPath '.\scripts\install-windows-task.ps1' -Destination $installer
             $entrySource = @(Get-ChildItem -LiteralPath '.\scripts' -Filter '3_*.cmd')
+            $starterSource = @(Get-ChildItem -LiteralPath '.\scripts' -Filter '1_*.cmd')
             $runnerSource = @(Get-ChildItem -LiteralPath '.\scripts' -Filter '2_*.cmd')
             $gmailSource = @(Get-ChildItem -LiteralPath '.\scripts' -Filter 'Gmail_*.cmd')
-            if ($entrySource.Count -ne 1 -or $runnerSource.Count -ne 1 -or $gmailSource.Count -ne 1) {
-              throw 'Expected exactly one runner, scheduler, and Gmail authorizer CMD source.'
+            if ($entrySource.Count -ne 1 -or $starterSource.Count -ne 1 -or
+                $runnerSource.Count -ne 1 -or $gmailSource.Count -ne 1) {
+              throw 'Expected exactly one starter, runner, scheduler, and Gmail authorizer CMD source.'
             }
             Copy-Item -LiteralPath $entrySource[0].FullName -Destination $entry
+            Copy-Item -LiteralPath $starterSource[0].FullName -Destination $starterEntry
             Copy-Item -LiteralPath $runnerSource[0].FullName -Destination $runnerEntry
             Copy-Item -LiteralPath $gmailSource[0].FullName -Destination $gmailEntry
 
@@ -172,6 +186,69 @@ jobs:
               throw "The Gmail authorizer omitted its failure log guidance: $gmailOutput"
             }
             Write-Output $gmailOutput
+
+            Push-Location $testRoot
+            try {
+              & $env:ComSpec /D /C 'call "starter.cmd" --no-open --no-pause < nul > starter-output.txt 2>&1'
+              $starterExitCode = $LASTEXITCODE
+              $global:LASTEXITCODE = 0
+            }
+            finally {
+              Pop-Location
+            }
+            if ($starterExitCode -ne 0) {
+              throw "The first-setup launcher failed with exit code $starterExitCode."
+            }
+            $starterOutput = $utf8Strict.GetString(
+              [System.IO.File]::ReadAllBytes($starterOutputPath)
+            )
+            if ($starterOutput.Contains([char]0xFFFD)) {
+              throw "The first-setup launcher produced corrupt output: $starterOutput"
+            }
+
+            $configHashAfter = (Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash
+            if ($configHashAfter -ne $configHashBefore) {
+              throw 'A first-setup, runner, or Gmail launcher modified the existing config.toml.'
+            }
+
+            $preservedConfigPath = Join-Path $testRoot 'preserved-config.toml'
+            $missingRunnerOutputPath = Join-Path $testRoot 'missing-runner-output.txt'
+            $missingGmailOutputPath = Join-Path $testRoot 'missing-gmail-output.txt'
+            Move-Item -LiteralPath $configPath -Destination $preservedConfigPath
+            Push-Location $testRoot
+            try {
+              & $env:ComSpec /D /C 'call "starter.cmd" --no-open --no-pause < nul > missing-starter-output.txt 2>&1'
+              $missingStarterExitCode = $LASTEXITCODE
+              $global:LASTEXITCODE = 0
+              & $env:ComSpec /D /C 'call "runner.cmd" --no-pause < nul > missing-runner-output.txt 2>&1'
+              $missingRunnerExitCode = $LASTEXITCODE
+              $global:LASTEXITCODE = 0
+              & $env:ComSpec /D /C 'call "gmail.cmd" --no-pause < nul > missing-gmail-output.txt 2>&1'
+              $missingGmailExitCode = $LASTEXITCODE
+              $global:LASTEXITCODE = 0
+            }
+            finally {
+              Pop-Location
+            }
+            if ($missingStarterExitCode -ne 0 -or $missingRunnerExitCode -ne 1 -or
+                $missingGmailExitCode -ne 1) {
+              throw "Missing config launcher exits were unexpected: starter=$missingStarterExitCode runner=$missingRunnerExitCode gmail=$missingGmailExitCode"
+            }
+            if (Test-Path -LiteralPath $configPath) {
+              throw 'A launcher unexpectedly created config.toml when it was missing.'
+            }
+            $missingRunnerOutput = $utf8Strict.GetString(
+              [System.IO.File]::ReadAllBytes($missingRunnerOutputPath)
+            )
+            $missingGmailOutput = $utf8Strict.GetString(
+              [System.IO.File]::ReadAllBytes($missingGmailOutputPath)
+            )
+            $generatorUrl = 'https://gamer-catch.pylot.dev/generator'
+            if (-not $missingRunnerOutput.Contains($generatorUrl) -or
+                -not $missingGmailOutput.Contains($generatorUrl)) {
+              throw 'Missing config guidance must link to the configuration generator.'
+            }
+            Move-Item -LiteralPath $preservedConfigPath -Destination $configPath
 
             Push-Location $testRoot
             try {
@@ -335,6 +412,66 @@ jobs:
           bash -n scripts/package-macos.sh scripts/*.command scripts/*.sh
           shellcheck scripts/package-macos.sh scripts/*.command scripts/*.sh
           python3 -m py_compile scripts/create-release-zip.py scripts/validate-package.py
+
+      - name: Protect user config in macOS launchers
+        run: |
+          test_root="$(mktemp -d)"
+          trap 'rm -rf "$test_root"' EXIT
+          cp scripts/1_首次設定.command "$test_root/"
+          cp scripts/2_開始抓取.command "$test_root/"
+          cp scripts/Gmail_首次授權.command "$test_root/"
+          mkdir -p "$test_root/bin" "$test_root/playwright-driver/package"
+          cp config.example.toml "$test_root/"
+
+          cat > "$test_root/GamerCatch" <<'SCRIPT'
+          #!/usr/bin/env bash
+          exit 0
+          SCRIPT
+          cat > "$test_root/bin/open" <<'SCRIPT'
+          #!/usr/bin/env bash
+          printf '%s\n' "$*" >> "$OPEN_LOG"
+          SCRIPT
+          chmod +x "$test_root"/*.command "$test_root/GamerCatch" "$test_root/bin/open"
+          touch "$test_root/playwright-driver/node" "$test_root/playwright-driver/package/cli.js"
+          chmod +x "$test_root/playwright-driver/node"
+
+          export OPEN_LOG="$test_root/open.log"
+          export PATH="$test_root/bin:$PATH"
+          printf '%s' 'schema_version = 2
+          # keep-user-config' > "$test_root/config.toml"
+          config_hash="$(sha256sum "$test_root/config.toml" | cut -d ' ' -f 1)"
+
+          printf '\n' | "$test_root/1_首次設定.command"
+          printf '\n' | "$test_root/2_開始抓取.command"
+          printf '\n' | "$test_root/Gmail_首次授權.command"
+          test "$(sha256sum "$test_root/config.toml" | cut -d ' ' -f 1)" = "$config_hash"
+          if grep -F 'config.toml' "$OPEN_LOG"; then
+            echo 'A launcher unexpectedly opened config.toml.' >&2
+            exit 1
+          fi
+
+          rm "$test_root/config.toml"
+          if printf '\n' | "$test_root/2_開始抓取.command" > "$test_root/missing-runner.log" 2>&1; then
+            echo 'Runner must fail when config.toml is missing.' >&2
+            exit 1
+          fi
+          if printf '\n' | "$test_root/Gmail_首次授權.command" > "$test_root/missing-gmail.log" 2>&1; then
+            echo 'Gmail authorizer must fail when config.toml is missing.' >&2
+            exit 1
+          fi
+          test ! -e "$test_root/config.toml"
+          grep -F 'https://gamer-catch.pylot.dev/generator' "$test_root/missing-runner.log"
+          grep -F 'https://gamer-catch.pylot.dev/generator' "$test_root/missing-gmail.log"
+
+          : > "$OPEN_LOG"
+          printf '\n' | "$test_root/1_首次設定.command"
+          test ! -e "$test_root/config.toml"
+          grep -Fx "$test_root/credentials" "$OPEN_LOG"
+          grep -Fx 'https://gamer-catch.pylot.dev/guide#quick-start' "$OPEN_LOG"
+          if grep -F 'config.toml' "$OPEN_LOG"; then
+            echo 'First setup unexpectedly opened config.toml.' >&2
+            exit 1
+          fi
 
       - name: Require the website as the only manual
         run: |

@@ -1,6 +1,6 @@
 [package]
 name = "gamer-catch-rust"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 rust-version = "1.88"
 description = "Scrape Bahamut rankings with Playwright, update Google Sheets, and send Gmail failure alerts"

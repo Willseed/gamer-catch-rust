@@ -790,26 +790,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn validates_oauth_callback_state_and_code() {
+    fn validates_all_oauth_callback_security_boundaries() {
         let request = b"GET /oauth/callback?state=safe-state&code=auth-code HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n";
         assert_eq!(
             parse_callback_request(request, "safe-state").unwrap(),
             ParsedCallback::Code("auth-code".to_owned())
         );
         assert!(parse_callback_request(request, "wrong-state").is_err());
-    }
 
-    #[test]
-    fn reports_oauth_denial_without_accepting_a_code() {
         let request = b"GET /oauth/callback?state=safe&error=access_denied HTTP/1.1\r\n\r\n";
         let result = parse_callback_request(request, "safe").unwrap();
         assert!(
             matches!(result, ParsedCallback::Denied(message) if message.contains("access_denied"))
         );
-    }
 
-    #[test]
-    fn rejects_duplicate_oauth_security_parameters() {
         let request = b"GET /oauth/callback?state=safe&state=attacker&code=x HTTP/1.1\r\n\r\n";
         assert!(parse_callback_request(request, "safe").is_err());
     }
@@ -833,7 +827,7 @@ mod tests {
     }
 
     #[test]
-    fn builds_utf8_mime_without_exposing_other_recipients() {
+    fn keeps_recipient_notifications_private_and_bounded() {
         let mime = build_mime_message(
             "sender@example.com",
             "one@example.com",
@@ -845,16 +839,9 @@ mod tests {
         assert!(text.contains("one@example.com"));
         assert!(!text.contains("two@example.com"));
         assert!(text.contains("Content-Type: text/plain"));
-    }
-
-    #[test]
-    fn truncates_large_error_details_at_character_boundaries() {
         assert_eq!(truncate_chars("夜鴉錯誤", 2), "夜鴉…");
         assert_eq!(truncate_chars("ok", 2), "ok");
-    }
 
-    #[test]
-    fn groups_each_recipient_into_one_private_message() {
         let failures = vec![
             FailureRecord {
                 game_name: Some("夜鴉".to_owned()),

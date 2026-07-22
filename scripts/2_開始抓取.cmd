@@ -7,6 +7,7 @@ set "CONFIG=%BASE%config.toml"
 set "APP=%BASE%GamerCatch.exe"
 set "DRIVER=%BASE%playwright-driver"
 set "LOG=%BASE%last-run.log"
+set "GENERATOR_URL=https://gamer-catch.pylot.dev/generator"
 
 pushd "%BASE%" >nul
 if not exist "%CONFIG%" goto :missing_config
@@ -30,10 +31,11 @@ echo 有項目未完成，請查看上方錯誤訊息或 last-run.log。
 goto :done
 
 :missing_config
-copy /Y "%BASE%config.example.toml" "%CONFIG%" >nul
-start "" notepad.exe "%CONFIG%"
 set "RC=1"
-echo 尚未設定。填完並儲存後，請再雙擊本檔。
+echo 找不到 config.toml；本腳本不會自動建立或覆蓋設定檔。
+echo 請前往設定檔產生器下載 config.toml，放到 GamerCatch 資料夾最外層：
+echo %GENERATOR_URL%
+echo 放好設定檔後，請再雙擊本檔。
 goto :done
 
 :incomplete

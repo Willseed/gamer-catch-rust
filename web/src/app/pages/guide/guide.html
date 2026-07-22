@@ -163,8 +163,9 @@
           </li>
           <li>保持網路連線與黑色視窗開啟，直到顯示完成。</li>
           <li>
-            完成後會協助您找到 <code>config.toml</code>、<code>credentials</code>
-            資料夾與這份線上指南。
+            完成後只會開啟 <code>credentials</code> 資料夾與這份線上指南，不會打開或修改
+            <code>config.toml</code>。設定檔請由 <a routerLink="/generator">設定產生器</a>下載後放到
+            GamerCatch 資料夾最外層。
           </li>
         </ol>
 
@@ -172,14 +173,16 @@
           <section class="platform-card">
             <span id="first-setup-macos" class="anchor-alias" aria-hidden="true"></span>
             <p class="platform-label">macOS</p>
-            <h3>Gatekeeper 阻擋時</h3>
+            <h3>先用右鍵打開，不必先進系統設定</h3>
             <p>
-              目前預覽版尚未使用 Developer ID 簽章與 Apple 公證。核對來源後，按住 Control
-              點擊腳本並選「打開」；若仍被阻擋，到「系統設定」→「隱私權與安全性」選「仍要打開」。
+              目前預覽版尚未使用 Developer ID 簽章與 Apple 公證，因此無法安全保證直接雙擊時完全沒有
+              Gatekeeper 提示。先核對下載來源與雜湊，再按住 Control
+              點擊腳本（或按右鍵），選「打開」→「打開」；通常只需對每支腳本操作一次，不必先進入系統設定。
             </p>
             <p>
-              不要執行來路不明的 <code>xattr</code>、<code>spctl</code> 指令，也不要停用
-              Gatekeeper。
+              若這個選項仍被封鎖，才到「系統設定」→「隱私權與安全性」確認；公司管理的 Mac 請交由 IT
+              管理員處理。不要執行來路不明的 <code>xattr</code>、<code>spctl</code>
+              指令，也不要停用 Gatekeeper。
             </p>
           </section>
           <section class="platform-card">
@@ -574,36 +577,117 @@
           Gmail 通知是選用功能。只有希望在排行或人氣抓取異常時收到信，才需要完成本章；不用時保持
           <code>gmail_notifications.enabled = false</code>。
         </p>
+        <div class="callout callout--info" role="note">
+          <strong>完成本章後會拿到什麼？</strong>
+          您會下載一份讓本機 GamerCatch 向指定 Gmail 請求「代為寄信」權限的 OAuth 用戶端
+          JSON。這一步還不會登入帳號或寄信；最後應得到 <code>gmail-oauth-client.json</code>。
+        </div>
         <div class="callout callout--warning" role="note">
           <strong>不能沿用 Sheets 的 JSON</strong>
           Gmail 使用寄件者本人同意的 OAuth 2.0；Sheets service account、API key 或 Web client
           都不能代替 Desktop app OAuth。
         </div>
+
+        <h3>開始前先確認寄件帳號與專案</h3>
+        <ul class="check-list">
+          <li>
+            先決定唯一的寄件 Gmail。稍後產生器的「寄件 Gmail」與首次授權時登入的帳號必須完全相同。
+          </li>
+          <li>
+            Gmail API、Google Auth Platform 與 Desktop OAuth client 必須設定在同一個 Google Cloud
+            專案。每一步都先核對畫面頂端顯示的是同一個專案。
+          </li>
+          <li>
+            可以沿用啟用 Sheets API 的 Cloud 專案，但 Gmail OAuth client 仍是另一份新憑證，不能使用
+            service account JSON 代替。
+          </li>
+        </ul>
+
+        <h3>1. 建立專案並啟用 Gmail API</h3>
         <ol class="steps">
           <li>
-            以預定的寄件 Gmail 登入 Google Cloud Console，建立或選擇專案；到「API
-            和服務」→「程式庫」啟用 Gmail API。
+            以預定的寄件 Gmail 登入
+            <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer"
+              >Google Cloud Console</a
+            >。從頂端專案選單建立或選擇專案，例如
+            <code>GamerCatch Gmail</code>；建立後再確認頂端已切換到該專案。
           </li>
           <li>
-            設定 Google Auth Platform 的應用程式名稱與支援信箱。Workspace 組織內可依政策選
-            Internal；一般個人 Gmail 選 External，Testing 時把寄件帳號加入 Test users。
+            開啟左上角選單 →「API 和服務」→「程式庫」，搜尋並點入「Gmail API」。不要選名稱相近的其他
+            Gmail 服務。
           </li>
           <li>
-            到 Data Access 只加入
-            <code>https://www.googleapis.com/auth/gmail.send</code>，不要加入讀信或完整信箱權限。
-          </li>
-          <li>
-            到 Clients 建立 OAuth client，Application type 必須是 Desktop
-            app（電腦版應用程式）。下載後改名為
-            <code>gmail-oauth-client.json</code>。
+            按「啟用」。若按鈕已顯示「管理」，代表這個專案已經啟用 Gmail API，可以繼續下一步。
           </li>
         </ol>
+
+        <h3>2. 設定 Google Auth Platform</h3>
+        <ol class="steps">
+          <li>
+            左上角選單 →「Google Auth Platform」→「Branding」。若看到 Get
+            started，先按下並填寫：應用程式名稱可用
+            <code>GamerCatch</code>，User support email 與 Contact information
+            填可正常收信的地址，再依畫面完成建立。
+          </li>
+          <li>
+            到「Audience」選擇使用者範圍。只有公司或學校 Google Workspace
+            專案，而且只讓同組織帳號使用時，才選 Internal；一般 <code>gmail.com</code> 個人帳號請選
+            External。
+          </li>
+          <li>
+            External 若顯示 Publishing status 為 Testing，請在 Test users 按 Add
+            users，把本章一開始決定的
+            <strong>完整寄件 Gmail</strong> 加進去。少了這一步，首次授權可能會顯示拒絕存取。
+          </li>
+          <li>
+            到「Data Access」→「Add or remove scopes」，搜尋 Gmail API，只勾選
+            <code>https://www.googleapis.com/auth/gmail.send</code>，再按
+            Update／Save。這項權限只供寄信；不要加入讀信、刪信或完整信箱權限。
+          </li>
+        </ol>
+
+        <h3>3. 建立並下載 Desktop OAuth client</h3>
+        <ol class="steps">
+          <li>
+            到「Clients」→「Create client」，Application type 必須選
+            <strong>Desktop app（電腦版應用程式）</strong>，名稱可填
+            <code>GamerCatch desktop</code>。Desktop app 不需要自行填 redirect URI。
+          </li>
+          <li>
+            按 Create 後下載 JSON。若已關閉完成視窗，可回到 Clients 清單，從剛建立的 client
+            下載。不要建立 Web application、API key 或 service account。
+          </li>
+          <li>
+            把下載檔改名為 <code>gmail-oauth-client.json</code>，不要修改 JSON 內容，再放進
+            GamerCatch 的 <code>credentials</code> 資料夾。Windows 請先顯示副檔名，避免變成
+            <code>gmail-oauth-client.json.json</code>。
+          </li>
+          <li>
+            回到設定產生器時只填 <code>gmail-oauth-client.json</code>；產生器會自動加上
+            <code>credentials/</code>，不要貼 JSON 內容。
+          </li>
+        </ol>
+
         <div class="callout callout--danger" role="alert">
           <strong>External Testing 通常只有 7 天</strong>
           <code>gmail.send</code> 授權與 refresh token 通常會在 7
           天後失效，不適合長期每日排程。長期使用請依帳號情況採 Internal，或切換 In production 並完成
           Google 要求的設定或驗證。
         </div>
+
+        <h3>完成前核對</h3>
+        <ul class="check-list">
+          <li>Gmail API、Google Auth Platform 與 OAuth client 位於同一個 Cloud 專案。</li>
+          <li>Audience 允許實際寄件帳號；External Testing 已把該帳號加入 Test users。</li>
+          <li>Data Access 只加入需要的 <code>gmail.send</code>，client 類型是 Desktop app。</li>
+          <li>
+            <code>credentials/gmail-oauth-client.json</code> 已放好，檔名只有一個
+            <code>.json</code>。
+          </li>
+        </ul>
+        <a class="primary-action" routerLink="/guide" fragment="gmail-authorization"
+          >下一步：填寫通知設定並完成 Gmail 首次授權</a
+        >
       </section>
 
       <section
@@ -824,8 +908,10 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
           <li>若要通知，再開啟 Gmail，填寄件地址、收件地址與 OAuth JSON 檔名。</li>
           <li>先讓所有遊戲保持「不寫入 Google Sheets」，再下載 <code>config.toml</code>。</li>
           <li id="config-placement">
-            備份套件內原本的 <code>config.toml</code>，把新檔放到 GamerCatch 資料夾最外層。Windows
-            要確認檔名沒有變成 <code>config.toml.txt</code>。
+            把新檔放到 GamerCatch 資料夾最外層；全新套件不會附帶
+            <code>config.toml</code
+            >。若目的資料夾已經有自己的設定檔，請先備份再決定是否替換。Windows 要確認檔名沒有變成
+            <code>config.toml.txt</code>。
           </li>
         </ol>
         <div class="callout callout--danger" role="alert">
@@ -837,7 +923,8 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
         </div>
         <div class="callout callout--info" role="note">
           <strong>多人帳號不是多人登入網站</strong>
-          產生器只建立本機設定檔，不會登入 Google，也不會替您保存帳號。不同使用者的 Sheets
+          產生器只建立本機設定檔，不會登入 Google
+          或取得帳號憑證；非秘密表單欄位會依產生器頁面的說明保存為本機草稿。不同使用者的 Sheets
           權限由各自的 service account JSON 與試算表分享設定決定。
         </div>
       </section>
@@ -1039,7 +1126,10 @@ notification_recipients = ["person-2&#64;example.com"]</code></pre>
           程式會抓排行與人氣，但不會修改任何試算表。強制 dry-run 發現錯誤時也不會寄 Gmail 通知。
         </div>
         <ol class="steps">
-          <li>儲存 <code>config.toml</code>，確認要測試的遊戲已啟用、寫入仍關閉。</li>
+          <li>
+            在產生器確認要測試的遊戲已啟用、寫入仍關閉，再下載 <code>config.toml</code>
+            放到 GamerCatch 資料夾最外層。
+          </li>
           <li>
             macOS 雙擊 <code>2_開始抓取.command</code>；Windows 雙擊 <code>2_開始抓取.cmd</code>。
           </li>

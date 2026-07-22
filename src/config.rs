@@ -621,17 +621,19 @@ mod tests {
     }
 
     #[test]
-    fn accepts_multiple_games_and_accounts() {
-        let config = valid_config();
+    fn supports_multiple_accounts_and_repeated_games_across_destinations() {
+        let mut config = valid_config();
         config.validate().unwrap();
         assert_ne!(
             config.games[0].service_account_key_path,
             config.games[1].service_account_key_path
         );
+        config.games[1].game_name = " 夜鴉 ".to_owned();
+        config.validate().unwrap();
     }
 
     #[test]
-    fn accepts_default_and_per_game_notification_recipients() {
+    fn validates_gmail_recipient_and_injection_boundaries() {
         let mut config = valid_config();
         enable_gmail(&mut config);
         config.games[0].notification_recipients = vec![
@@ -639,19 +641,13 @@ mod tests {
             "backup@example.com".to_owned(),
         ];
         config.validate().unwrap();
-    }
 
-    #[test]
-    fn gmail_enabled_requires_each_active_game_to_have_a_recipient() {
         let mut config = valid_config();
         enable_gmail(&mut config);
         config.gmail_notifications.default_recipients.clear();
         config.games[0].notification_recipients = vec!["person-one@example.com".to_owned()];
         assert!(config.validate().is_err());
-    }
 
-    #[test]
-    fn rejects_duplicate_and_header_injection_email_addresses() {
         let mut duplicate = valid_config();
         enable_gmail(&mut duplicate);
         duplicate.gmail_notifications.default_recipients = vec![
@@ -665,10 +661,7 @@ mod tests {
         injected.gmail_notifications.sender_email =
             "alerts@example.com\r\nBcc: attacker@example.com".to_owned();
         assert!(injected.validate().is_err());
-    }
 
-    #[test]
-    fn disabled_gmail_allows_unfinished_placeholders() {
         let mut config = valid_config();
         config.gmail_notifications.sender_email = "請填入寄件帳號".to_owned();
         config.gmail_notifications.default_recipients = vec!["請填入收件帳號".to_owned()];
@@ -676,14 +669,7 @@ mod tests {
     }
 
     #[test]
-    fn allows_same_game_for_different_sheets() {
-        let mut config = valid_config();
-        config.games[1].game_name = " 夜鴉 ".to_owned();
-        config.validate().unwrap();
-    }
-
-    #[test]
-    fn accepts_full_google_sheets_url() {
+    fn validates_external_hosts_spreadsheet_urls_and_column_syntax() {
         assert_eq!(
             normalize_spreadsheet_id(
                 "https://docs.google.com/spreadsheets/d/abc_DEF-123/edit#gid=0"
@@ -692,34 +678,28 @@ mod tests {
             "abc_DEF-123"
         );
         assert!(normalize_spreadsheet_id("https://example.com/spreadsheets/d/abc/edit").is_err());
-    }
-
-    #[test]
-    fn rejects_external_bahamut_host() {
         let mut config = valid_config();
         config.bahamut.base_url = "https://example.com/".to_owned();
         assert!(config.validate().is_err());
+
+        assert_eq!(normalize_column(" aa ").unwrap(), "AA");
+        assert!(normalize_column("A1").is_err());
+        assert!(normalize_column("").is_err());
     }
 
     #[test]
-    fn rejects_duplicate_output_columns() {
+    fn detects_destination_collisions_but_allows_shared_date_columns() {
         let mut config = valid_config();
         config.games[1].spreadsheet_id = "sheet-a".to_owned();
         assert!(config.validate().is_err());
-    }
 
-    #[test]
-    fn rejects_output_column_overlapping_another_games_date_column() {
         let mut config = valid_config();
         config.games[1].spreadsheet_id = "sheet-a".to_owned();
         config.games[1].date_column = "B".to_owned();
         config.games[1].rank_column = "D".to_owned();
         config.games[1].popularity_column = "E".to_owned();
         assert!(config.validate().is_err());
-    }
 
-    #[test]
-    fn allows_shared_date_column_with_distinct_outputs() {
         let mut config = valid_config();
         config.games[1].spreadsheet_id = "sheet-a".to_owned();
         config.games[1].rank_column = "D".to_owned();
@@ -728,23 +708,13 @@ mod tests {
     }
 
     #[test]
-    fn normalizes_sheet_columns() {
-        assert_eq!(normalize_column(" aa ").unwrap(), "AA");
-        assert!(normalize_column("A1").is_err());
-        assert!(normalize_column("").is_err());
-    }
-
-    #[test]
-    fn rejects_config_without_active_games() {
+    fn requires_an_active_game_but_ignores_disabled_placeholders() {
         let mut config = valid_config();
         for game in &mut config.games {
             game.enabled = false;
         }
         assert!(config.validate().is_err());
-    }
 
-    #[test]
-    fn disabled_placeholder_does_not_require_sheet_settings() {
         let mut config = valid_config();
         config.games[1] = GameConfig {
             enabled: false,

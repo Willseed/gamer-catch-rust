@@ -432,6 +432,7 @@ jobs:
             'APPLE_NOTARY_KEY_ID' \
             'APPLE_NOTARY_ISSUER_ID' \
             'APPLE_TEAM_ID' \
+            'security find-key -t private -s' \
             'security set-key-partition-list' \
             'Remove signing credentials' \
             "if: github.event_name == 'push'"

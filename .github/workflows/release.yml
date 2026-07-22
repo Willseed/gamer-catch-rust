@@ -185,6 +185,18 @@ jobs:
             -x \
             -T /usr/bin/codesign
           rm -f "$certificate_path"
+
+          private_key_lines="$(
+            security find-key -t private -s "$keychain_path" 2>/dev/null || true
+          )"
+          private_key_count="$(
+            printf '%s\n' "$private_key_lines" | grep -c '^keychain:' || true
+          )"
+          if [[ "$private_key_count" -ne 1 ]]; then
+            echo "Developer ID PKCS#12 must contain exactly one signing private key; found $private_key_count." >&2
+            exit 1
+          fi
+
           security set-key-partition-list \
             -S apple-tool:,apple:,codesign: \
             -s \

@@ -1,9 +1,8 @@
 <div class="setup-progress" aria-label="首次設定三步驟">
   <p>首次設定進度</p>
-  <ol role="list">
+  <ol>
     @for (step of steps; track step.number) {
       <li
-        role="listitem"
         [class.is-complete]="step.number < currentStep()"
         [class.is-current]="step.number === currentStep()"
         [attr.aria-current]="step.number === currentStep() ? 'step' : null"

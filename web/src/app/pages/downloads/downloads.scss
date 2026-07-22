@@ -216,8 +216,8 @@ progress::-moz-progress-bar {
   margin-bottom: 0.25rem;
   font-size: 1.05rem;
 }
-.support-toast p {
-  margin: 0;
+.toast-message {
+  display: block;
   color: #d7e1ec;
   font-size: 0.9rem;
 }

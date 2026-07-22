@@ -122,19 +122,13 @@
   </section>
 
   @if (supportToast(); as toast) {
-    <aside
-      class="support-toast"
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      aria-label="裝置支援通知"
-    >
+    <output class="support-toast" aria-live="polite" aria-atomic="true" aria-label="裝置支援通知">
       <span class="toast-symbol" aria-hidden="true">×</span>
-      <div>
+      <span class="toast-copy">
         <strong>{{ toast.title }}</strong>
-        <p>{{ toast.message }}</p>
-      </div>
+        <span class="toast-message">{{ toast.message }}</span>
+      </span>
       <button type="button" (click)="dismissSupportToast()" aria-label="關閉通知">×</button>
-    </aside>
+    </output>
   }
 </main>

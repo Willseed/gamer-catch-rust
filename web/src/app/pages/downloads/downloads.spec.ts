@@ -63,7 +63,6 @@ describe('DownloadsPage', () => {
 
   afterEach(() => {
     httpTesting.verify();
-    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -93,8 +92,9 @@ describe('DownloadsPage', () => {
 
     httpTesting.expectNone((request) => request.url.startsWith('/api/download/'));
     const element = fixture.nativeElement as HTMLElement;
-    const toast = element.querySelector<HTMLElement>('.support-toast');
-    expect(toast?.getAttribute('role')).toBe('status');
+    const toast = element.querySelector<HTMLOutputElement>('output.support-toast');
+    expect(toast).not.toBeNull();
+    expect(toast?.hasAttribute('role')).toBe(false);
     expect(toast?.getAttribute('aria-live')).toBe('polite');
     expect(toast?.textContent).toContain('目前不支援 Linux');
 
@@ -104,12 +104,21 @@ describe('DownloadsPage', () => {
   });
 
   it('automatically dismisses the support toast after six seconds', () => {
-    vi.useFakeTimers();
+    let timeoutCallback: (() => void) | undefined;
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation((handler) => {
+      if (typeof handler === 'function') {
+        timeoutCallback = () => handler();
+      }
+      return 1;
+    });
+
     fixture.componentInstance.detectedPlatform.set('linux');
     fixture.detectChanges();
 
     expect(fixture.componentInstance.supportToast()).not.toBeNull();
-    vi.advanceTimersByTime(6_000);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 6_000);
+    expect(timeoutCallback).toBeDefined();
+    timeoutCallback?.();
     expect(fixture.componentInstance.supportToast()).toBeNull();
   });
 

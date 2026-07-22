@@ -70,16 +70,15 @@ fn main() {
         return;
     }
 
-    println!(
-        "cargo:warning=Assembling Playwright driver {PLAYWRIGHT_VERSION} (Node {NODE_VERSION}) for {platform}..."
+    // Keep routine progress available to `cargo -vv` without presenting a
+    // successful cold build as a compiler warning.
+    eprintln!(
+        "Assembling Playwright driver {PLAYWRIGHT_VERSION} (Node {NODE_VERSION}) for {platform}..."
     );
 
     match assemble_driver(&driver_dir, PLAYWRIGHT_VERSION, platform) {
         Ok(()) => {
-            println!(
-                "cargo:warning=Playwright driver assembled at {}",
-                driver_dir.display()
-            );
+            eprintln!("Playwright driver assembled at {}", driver_dir.display());
             set_output_env_vars(&driver_dir, platform);
         }
         Err(e) => {

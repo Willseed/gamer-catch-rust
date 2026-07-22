@@ -47,3 +47,13 @@ fn test_playwright_version_is_const() {
     let runtime_version: &str = PLAYWRIGHT_VERSION;
     assert_eq!(VERSION_AT_COMPILE_TIME, runtime_version);
 }
+
+#[test]
+fn successful_driver_assembly_is_not_reported_as_a_cargo_warning() {
+    let build_script = include_str!("../build.rs");
+
+    assert!(!build_script.contains("cargo:warning=Assembling Playwright driver"));
+    assert!(!build_script.contains("cargo:warning=Playwright driver assembled"));
+    assert!(build_script.contains("cargo:warning=Failed to assemble Playwright driver"));
+    assert!(build_script.contains("cargo:warning=Unsupported platform"));
+}

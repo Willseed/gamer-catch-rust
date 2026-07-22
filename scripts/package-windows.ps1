@@ -191,7 +191,9 @@ elseif ($CertificateSha1) {
     }
 }
 else {
-    Write-Warning "Unsigned Windows preview explicitly allowed by ALLOW_UNSIGNED_WINDOWS=1."
+    Write-Information `
+        "Preview status: unsigned Windows package explicitly enabled by ALLOW_UNSIGNED_WINDOWS=1." `
+        -InformationAction Continue
 }
 
 if ($ArtifactDlib -and $ArtifactMetadata -or $CertificateSha1) {

@@ -138,7 +138,7 @@ if [[ -n "$SIGN_IDENTITY" ]]; then
   codesign --verify --strict --verbose=2 "$OUTPUT_DIR/playwright-driver/node"
   codesign --verify --strict --verbose=2 "$OUTPUT_DIR/GamerCatch"
 else
-  echo "警告：已明確允許建立未簽章 macOS 預覽版。"
+  echo "預覽版狀態：已明確允許建立未簽章 macOS 版本。"
 fi
 
 python3 "$PROJECT_DIR/scripts/create-release-zip.py" "$OUTPUT_DIR" "$OUTPUT_ZIP"
@@ -147,7 +147,7 @@ if [[ -n "$NOTARY_PROFILE" ]]; then
   echo "送交 Apple notarization：$OUTPUT_ZIP"
   xcrun notarytool submit "$OUTPUT_ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
 elif [[ -n "$SIGN_IDENTITY" ]]; then
-  echo "警告：已明確允許建立未公證 macOS 預覽版。"
+  echo "預覽版狀態：已明確允許建立未公證 macOS 版本。"
 fi
 
 echo "macOS 腳本發行包完成：$OUTPUT_ZIP"

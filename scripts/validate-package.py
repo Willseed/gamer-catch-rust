@@ -11,6 +11,7 @@ import tomllib
 import zipfile
 from dataclasses import dataclass
 from pathlib import PurePosixPath
+from typing import NoReturn
 
 
 CONFIG_FILENAME = "config.toml"
@@ -24,6 +25,7 @@ WINDOWS_RUNNER_ENTRY = "2_開始抓取.cmd"
 WINDOWS_GMAIL_AUTHORIZER_ENTRY = "Gmail_首次授權.cmd"
 WINDOWS_SCHEDULER_ENTRY = "3_安裝每天早上9點自動抓取.cmd"
 WINDOWS_SCHEDULER_SCRIPT = "install-windows-task.ps1"
+WINDOWS_NOTEPAD_EXECUTABLE = "notepad.exe"
 WINDOWS_CMD_ENTRIES = (
     WINDOWS_STARTER_ENTRY,
     WINDOWS_RUNNER_ENTRY,
@@ -73,7 +75,7 @@ PLATFORM_FILES = {
 }
 
 
-def fail(message: str) -> None:
+def fail(message: str) -> NoReturn:
     raise ValueError(message)
 
 
@@ -147,6 +149,23 @@ def validate_no_local_build_paths(data: bytes) -> None:
         fail(f"executable leaks a local build path: {display}")
 
 
+def validate_archive_entry(entry: str) -> None:
+    parsed = PurePosixPath(entry)
+    if parsed.is_absolute() or ".." in parsed.parts:
+        fail(f"unsafe ZIP path: {entry}")
+    if parsed.name == CONFIG_FILENAME:
+        fail(
+            f"release ZIP must not include mutable {CONFIG_FILENAME}; "
+            f"users download it from the configuration generator: {entry}"
+        )
+
+    suffix = parsed.suffix.lower()
+    if suffix == ".toml" and parsed.name != EXAMPLE_CONFIG_FILENAME:
+        fail(f"release ZIP may only include {EXAMPLE_CONFIG_FILENAME} as TOML: {entry}")
+    if suffix == ".pdf":
+        fail(f"release ZIP must use the online guide instead of PDF: {entry}")
+
+
 def validate_zip_structure(archive: zipfile.ZipFile) -> list[str]:
     bad = archive.testzip()
     if bad:
@@ -160,24 +179,12 @@ def validate_zip_structure(archive: zipfile.ZipFile) -> list[str]:
     if len(roots) != 1:
         fail(f"ZIP must contain exactly one top-level folder, found: {sorted(roots)}")
 
-    toml_entries = []
     for entry in entries:
-        parsed = PurePosixPath(entry)
-        if parsed.is_absolute() or ".." in parsed.parts:
-            fail(f"unsafe ZIP path: {entry}")
-        if parsed.name == CONFIG_FILENAME:
-            fail(
-                f"release ZIP must not include mutable {CONFIG_FILENAME}; "
-                f"users download it from the configuration generator: {entry}"
-            )
-        if parsed.suffix.lower() == ".toml" and parsed.name != EXAMPLE_CONFIG_FILENAME:
-            fail(
-                f"release ZIP may only include {EXAMPLE_CONFIG_FILENAME} as TOML: {entry}"
-            )
-        if parsed.suffix.lower() == ".toml":
-            toml_entries.append(entry)
-        if parsed.suffix.lower() == ".pdf":
-            fail(f"release ZIP must use the online guide instead of PDF: {entry}")
+        validate_archive_entry(entry)
+
+    toml_entries = [
+        entry for entry in entries if PurePosixPath(entry).suffix.lower() == ".toml"
+    ]
     if len(toml_entries) != 1:
         fail(
             f"release ZIP must contain exactly one {EXAMPLE_CONFIG_FILENAME}; "
@@ -303,7 +310,7 @@ def validate_windows_scheduler(
     )
     reject_markers(
         runner,
-        (EXAMPLE_CONFIG_FILENAME, "notepad.exe", "start "),
+        (EXAMPLE_CONFIG_FILENAME, WINDOWS_NOTEPAD_EXECUTABLE, "start "),
         WINDOWS_RUNNER_ENTRY,
     )
 
@@ -321,7 +328,7 @@ def validate_windows_scheduler(
     )
     reject_markers(
         gmail_authorizer,
-        (EXAMPLE_CONFIG_FILENAME, "notepad.exe", "start "),
+        (EXAMPLE_CONFIG_FILENAME, WINDOWS_NOTEPAD_EXECUTABLE, "start "),
         WINDOWS_GMAIL_AUTHORIZER_ENTRY,
     )
 
@@ -333,7 +340,12 @@ def validate_windows_scheduler(
     )
     reject_markers(
         starter,
-        ('set "CONFIG=', EXAMPLE_CONFIG_FILENAME, "copy /Y", "notepad.exe"),
+        (
+            'set "CONFIG=',
+            EXAMPLE_CONFIG_FILENAME,
+            "copy /Y",
+            WINDOWS_NOTEPAD_EXECUTABLE,
+        ),
         WINDOWS_STARTER_ENTRY,
     )
 

@@ -8,8 +8,8 @@
         <code>config.toml</code>。所有內容只在你的瀏覽器記憶體中處理，不會傳到伺服器。
       </p>
       <div class="privacy-note" role="note">
-        <strong>安全提醒：</strong>這裡只填 JSON 的檔名與相對路徑；請勿貼上 service account 或 Gmail
-        OAuth JSON 的內容。
+        <strong>安全提醒：</strong>service account 只填 JSON 檔名，Gmail OAuth
+        才填相對路徑；請勿貼上 JSON 內容。
       </div>
     </div>
   </section>
@@ -159,11 +159,22 @@
                 />
               </label>
               <label class="span-two">
-                <span>此遊戲的 service account JSON 路徑</span>
-                <input type="text" formControlName="serviceAccountKeyPath" autocomplete="off" />
-                <small
-                  >例如 credentials/person-1-service-account.json。不同帳號可用不同檔案。</small
-                >
+                <span>此遊戲的 service account JSON 檔名</span>
+                <span class="credential-file-input">
+                  <span class="credential-path-prefix" aria-hidden="true">credentials/</span>
+                  <input
+                    type="text"
+                    formControlName="serviceAccountKeyFileName"
+                    placeholder="person-1-service-account.json"
+                    autocomplete="off"
+                    spellcheck="false"
+                    [attr.aria-describedby]="'service-account-file-help-' + index"
+                  />
+                </span>
+                <small [id]="'service-account-file-help-' + index">
+                  只需填 JSON 檔名，例如 ABC.json；產生器會自動加上
+                  credentials/。不同帳號可用不同檔案。
+                </small>
               </label>
               <label>
                 <span>日期欄位</span>

@@ -15,7 +15,7 @@ function game(overrides: Partial<GameSettings> = {}): GameSettings {
   return {
     ...createDefaultGame(),
     gameName: '夜鴉',
-    serviceAccountKeyPath: 'credentials/night-crows-service-account.json',
+    serviceAccountKeyFileName: 'night-crows-service-account.json',
     ...overrides,
     notificationRecipients: [...(overrides.notificationRecipients ?? [])],
   };
@@ -101,7 +101,7 @@ describe('serializeConfig', () => {
         gameName: '夜鴉',
         writeToGoogleSheets: true,
         spreadsheetId: 'night-crows-sheet',
-        serviceAccountKeyPath: 'credentials/account-a.json',
+        serviceAccountKeyFileName: 'account-a.json',
         worksheetName: '夜鴉日報',
         dateColumn: ' a ',
         rankColumn: ' b ',
@@ -112,7 +112,7 @@ describe('serializeConfig', () => {
         gameName: '遊戲 B',
         writeToGoogleSheets: true,
         spreadsheetId: 'game-b-sheet',
-        serviceAccountKeyPath: 'credentials/account-b.json',
+        serviceAccountKeyFileName: 'account-b.json',
         worksheetName: 'B 組資料',
         firstDataRow: 5,
         dateColumn: 'D',
@@ -124,7 +124,7 @@ describe('serializeConfig', () => {
         gameName: '遊戲 C',
         writeToGoogleSheets: false,
         spreadsheetId: '',
-        serviceAccountKeyPath: 'credentials/account-c.json',
+        serviceAccountKeyFileName: 'account-c.json',
         worksheetName: '不寫入',
         notificationRecipients: [],
       }),
@@ -351,18 +351,23 @@ describe('validateConfig credential paths', () => {
     '/tmp/service-account.json',
     'C:\\credentials\\service-account.json',
     '..\\service-account.json',
-    'credentials/../service-account.json',
+    'credentials/service-account.json',
+    'folder/service-account.json',
     '\\\\server\\share\\service-account.json',
-    'credentials//service-account.json',
-    'credentials/./service-account.json',
-    'credentials/service-account.json\nignored',
-  ])('rejects a dangerous service-account path: %s', (serviceAccountKeyPath) => {
-    const configuration = config([
-      game({ writeToGoogleSheets: true, spreadsheetId: 'sheet-a', serviceAccountKeyPath }),
-    ]);
+    'service-account.txt',
+    '.json',
+    ' service-account.json',
+    'service-account.json\nignored',
+  ])(
+    'rejects anything other than one service-account JSON filename: %s',
+    (serviceAccountKeyFileName) => {
+      const configuration = config([
+        game({ writeToGoogleSheets: true, spreadsheetId: 'sheet-a', serviceAccountKeyFileName }),
+      ]);
 
-    expect(pathsFor(configuration)).toContain('games.0.serviceAccountKeyPath');
-  });
+      expect(pathsFor(configuration)).toContain('games.0.serviceAccountKeyFileName');
+    },
+  );
 
   it.each([
     '/tmp/gmail-oauth.json',
@@ -382,12 +387,12 @@ describe('validateConfig credential paths', () => {
     expect(pathsFor(configuration)).toContain('gmail.oauthClientSecretPath');
   });
 
-  it('accepts ordinary relative paths inside the credentials directory', () => {
+  it('accepts a service-account JSON filename and a safe Gmail OAuth relative path', () => {
     const configuration = config([
       game({
         writeToGoogleSheets: true,
         spreadsheetId: 'sheet-a',
-        serviceAccountKeyPath: 'credentials/person-1/service-account.json',
+        serviceAccountKeyFileName: 'person-1-service-account.json',
       }),
     ]);
     configuration.gmail = {
@@ -398,7 +403,7 @@ describe('validateConfig credential paths', () => {
       oauthClientSecretPath: 'credentials/gmail/oauth-client.json',
     };
 
-    expect(pathsFor(configuration)).not.toContain('games.0.serviceAccountKeyPath');
+    expect(pathsFor(configuration)).not.toContain('games.0.serviceAccountKeyFileName');
     expect(pathsFor(configuration)).not.toContain('gmail.oauthClientSecretPath');
   });
 });

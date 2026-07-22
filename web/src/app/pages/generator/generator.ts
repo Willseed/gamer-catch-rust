@@ -29,7 +29,9 @@ function createGameForm(index: number, source: GameSettings = createDefaultGame(
     }),
     writeToGoogleSheets: new FormControl(source.writeToGoogleSheets, { nonNullable: true }),
     spreadsheetId: new FormControl(source.spreadsheetId, { nonNullable: true }),
-    serviceAccountKeyPath: new FormControl(source.serviceAccountKeyPath, { nonNullable: true }),
+    serviceAccountKeyFileName: new FormControl(source.serviceAccountKeyFileName, {
+      nonNullable: true,
+    }),
     worksheetName: new FormControl(source.worksheetName, { nonNullable: true }),
     timezone: new FormControl(source.timezone, { nonNullable: true }),
     firstDataRow: new FormControl(source.firstDataRow, {
@@ -105,7 +107,7 @@ export class GeneratorPage {
     source.gameName = `${source.gameName}（副本）`;
     source.writeToGoogleSheets = false;
     source.spreadsheetId = '';
-    source.serviceAccountKeyPath = `credentials/person-${this.games.length + 1}-service-account.json`;
+    source.serviceAccountKeyFileName = `person-${this.games.length + 1}-service-account.json`;
     this.games.push(createGameForm(this.games.length, source));
     this.refreshOutput();
   }
@@ -179,7 +181,7 @@ export class GeneratorPage {
       gameName: raw.gameName,
       writeToGoogleSheets: raw.writeToGoogleSheets,
       spreadsheetId: raw.spreadsheetId,
-      serviceAccountKeyPath: raw.serviceAccountKeyPath,
+      serviceAccountKeyFileName: raw.serviceAccountKeyFileName,
       worksheetName: raw.worksheetName,
       timezone: raw.timezone,
       firstDataRow: raw.firstDataRow,

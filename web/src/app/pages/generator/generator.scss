@@ -108,6 +108,32 @@ select {
   font-weight: 500;
 }
 
+.credential-file-input {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.credential-path-prefix {
+  display: flex;
+  align-items: center;
+  padding-inline: 0.875rem;
+  border: 2px solid #68717d;
+  border-right: 0;
+  border-radius: var(--radius-input) 0 0 var(--radius-input);
+  background: #eef1f4;
+  color: #343b44;
+  font-weight: 700;
+}
+
+.credential-file-input input {
+  min-width: 0;
+  border-radius: 0 var(--radius-input) var(--radius-input) 0;
+}
+
+.credential-file-input:hover .credential-path-prefix {
+  border-color: #11151a;
+}
+
 textarea {
   resize: vertical;
 }

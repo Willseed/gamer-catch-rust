@@ -35,4 +35,40 @@ describe('GeneratorPage', () => {
 
     expect(fixture.componentInstance.preview()).toContain('category = 500');
   });
+
+  it('asks for only the service-account JSON filename and shows the fixed directory', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const fileNameInput = element.querySelector<HTMLInputElement>(
+      'input[formcontrolname="serviceAccountKeyFileName"]',
+    );
+    const prefix = element.querySelector('.credential-path-prefix');
+    const help = element.querySelector('#service-account-file-help-0');
+
+    expect(fileNameInput?.value).toBe('person-1-service-account.json');
+    expect(prefix?.textContent?.trim()).toBe('credentials/');
+    expect(help?.textContent).toContain('只需填 JSON 檔名，例如 ABC.json');
+    expect(help?.textContent).toContain('產生器會自動加上 credentials/');
+  });
+
+  it('adds credentials/ to the filename in the generated TOML', () => {
+    fixture.componentInstance.games.at(0).controls.serviceAccountKeyFileName.setValue('ABC.json');
+
+    expect(fixture.componentInstance.preview()).toContain(
+      'service_account_key_path = "credentials/ABC.json"',
+    );
+    expect(fixture.componentInstance.preview()).not.toContain('credentials/credentials/');
+  });
+
+  it('rejects a full credentials path because the field accepts a filename only', () => {
+    fixture.componentInstance.games
+      .at(0)
+      .controls.serviceAccountKeyFileName.setValue('credentials/ABC.json');
+
+    expect(fixture.componentInstance.issues()).toContainEqual(
+      expect.objectContaining({
+        path: 'games.0.serviceAccountKeyFileName',
+        message: expect.stringContaining('只需填檔名'),
+      }),
+    );
+  });
 });

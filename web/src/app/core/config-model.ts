@@ -24,7 +24,7 @@ export interface GameSettings {
   gameName: string;
   writeToGoogleSheets: boolean;
   spreadsheetId: string;
-  serviceAccountKeyPath: string;
+  serviceAccountKeyFileName: string;
   worksheetName: string;
   timezone: string;
   firstDataRow: number;
@@ -68,7 +68,7 @@ export function createDefaultGame(index = 0): GameSettings {
     gameName: index === 0 ? '夜鴉' : '',
     writeToGoogleSheets: false,
     spreadsheetId: '',
-    serviceAccountKeyPath: `credentials/person-${index + 1}-service-account.json`,
+    serviceAccountKeyFileName: `person-${index + 1}-service-account.json`,
     worksheetName: '每日排名',
     timezone: 'Asia/Taipei',
     firstDataRow: 2,
@@ -196,6 +196,20 @@ function isSafeRelativePath(value: string): boolean {
   );
 }
 
+function isServiceAccountJsonFileName(value: string): boolean {
+  const fileName = value.trim();
+  return (
+    fileName === value &&
+    fileName.length > '.json'.length &&
+    !/[\\/\u0000-\u001f\u007f]/u.test(fileName) &&
+    fileName.toLocaleLowerCase('en-US').endsWith('.json')
+  );
+}
+
+function serviceAccountKeyPath(fileName: string): string {
+  return `credentials/${fileName.trim()}`;
+}
+
 function normalizeSpreadsheetId(value: string): string | null {
   const candidate = value.trim();
   if (/^[A-Za-z0-9_-]+$/u.test(candidate)) {
@@ -285,6 +299,13 @@ function addGameIssues(
     );
   }
 
+  if (!isServiceAccountJsonFileName(game.serviceAccountKeyFileName)) {
+    issues.push({
+      path: `${prefix}.serviceAccountKeyFileName`,
+      message: `遊戲「${name || index + 1}」：service account JSON 只需填檔名（例如 ABC.json），不可包含 credentials/ 或其他路徑。`,
+    });
+  }
+
   if (!game.writeToGoogleSheets) {
     return;
   }
@@ -298,12 +319,6 @@ function addGameIssues(
     issues.push({
       path: `${prefix}.worksheetName`,
       message: `遊戲「${name || index + 1}」：工作表名稱不可留白或換行。`,
-    });
-  }
-  if (!isSafeRelativePath(game.serviceAccountKeyPath)) {
-    issues.push({
-      path: `${prefix}.serviceAccountKeyPath`,
-      message: `遊戲「${name || index + 1}」：JSON 路徑請填 credentials/檔名.json，且不可使用絕對路徑或 ..。`,
     });
   }
 }
@@ -478,7 +493,7 @@ export function serializeConfig(config: GamerCatchConfig): string {
       `game_name = ${tomlString(game.gameName.trim())}`,
       `write_to_google_sheets = ${game.writeToGoogleSheets}`,
       `spreadsheet_id = ${tomlString(spreadsheet)}`,
-      `service_account_key_path = ${tomlString(game.serviceAccountKeyPath.trim())}`,
+      `service_account_key_path = ${tomlString(serviceAccountKeyPath(game.serviceAccountKeyFileName))}`,
       `worksheet_name = ${tomlString(game.worksheetName.trim())}`,
       `timezone = ${tomlString(game.timezone.trim())}`,
       `first_data_row = ${tomlUnsignedInteger(game.firstDataRow, 2)}`,

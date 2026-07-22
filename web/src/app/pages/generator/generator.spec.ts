@@ -128,6 +128,113 @@ describe('GeneratorPage', () => {
     );
   });
 
+  it('syncs game recipients into the defaults without replacing manually entered addresses', () => {
+    const defaults = fixture.componentInstance.form.controls.gmail.controls.defaultRecipientsText;
+    const gameRecipients =
+      fixture.componentInstance.games.at(0).controls.notificationRecipientsText;
+    defaults.setValue('fallback@example.com\nOWNER@example.com');
+
+    gameRecipients.setValue('owner@example.com, game@example.com');
+    fixture.detectChanges();
+
+    expect(defaults.value).toBe('fallback@example.com\nOWNER@example.com\ngame@example.com');
+    expect(fixture.componentInstance.preview()).toContain(
+      'default_recipients = ["fallback@example.com", "OWNER@example.com", "game@example.com"]',
+    );
+    const help = (fixture.nativeElement as HTMLElement)
+      .querySelector('textarea[formcontrolname="notificationRecipientsText"]')
+      ?.closest('label')
+      ?.querySelector('small');
+    expect(help?.textContent).toContain('會同步加入下一節的「預設通知收件人」');
+  });
+
+  it('replaces stale auto-synced recipients while preserving manual defaults', () => {
+    const defaults = fixture.componentInstance.form.controls.gmail.controls.defaultRecipientsText;
+    const gameRecipients =
+      fixture.componentInstance.games.at(0).controls.notificationRecipientsText;
+    defaults.setValue('fallback@example.com');
+
+    gameRecipients.setValue('old@example.com');
+    expect(defaults.value).toBe('fallback@example.com\nold@example.com');
+
+    gameRecipients.setValue('new@example.com');
+    expect(defaults.value).toBe('fallback@example.com\nnew@example.com');
+
+    gameRecipients.setValue('');
+    expect(defaults.value).toBe('fallback@example.com');
+  });
+
+  it('does not move the caret while typing and restores synchronized recipients on blur', () => {
+    const gmail = fixture.componentInstance.form.controls.gmail.controls;
+    fixture.componentInstance.games
+      .at(0)
+      .controls.notificationRecipientsText.setValue('game@example.com');
+    gmail.enabled.setValue(true);
+    fixture.detectChanges();
+
+    const textarea = (fixture.nativeElement as HTMLElement).querySelector<HTMLTextAreaElement>(
+      'textarea[formcontrolname="defaultRecipientsText"]',
+    );
+    if (!textarea) {
+      throw new Error('找不到預設通知收件人欄位');
+    }
+
+    textarea.value = 'm';
+    textarea.setSelectionRange(1, 1);
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(gmail.defaultRecipientsText.value).toBe('m');
+    expect(textarea.value).toBe('m');
+    expect(textarea.selectionStart).toBe(1);
+
+    textarea.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(gmail.defaultRecipientsText.value).toBe('m\ngame@example.com');
+    expect(textarea.value).toBe('m\ngame@example.com');
+  });
+
+  it('restores synchronized recipients before downloading', () => {
+    const game = fixture.componentInstance.games.at(0).controls;
+    const defaults = fixture.componentInstance.form.controls.gmail.controls.defaultRecipientsText;
+    game.spreadsheetId.setValue('sheet-a');
+    game.notificationRecipientsText.setValue('game@example.com');
+    defaults.setValue('');
+    const createObjectURL = vi.fn(() => 'blob:config');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+    fixture.componentInstance.downloadConfig();
+
+    expect(defaults.value).toBe('game@example.com');
+    expect(fixture.componentInstance.preview()).toContain(
+      'default_recipients = ["game@example.com"]',
+    );
+    expect(createObjectURL).toHaveBeenCalledOnce();
+  });
+
+  it('keeps recipient synchronization correct when games are disabled or removed', () => {
+    const defaults = fixture.componentInstance.form.controls.gmail.controls.defaultRecipientsText;
+    fixture.componentInstance.games
+      .at(0)
+      .controls.notificationRecipientsText.setValue('shared@example.com');
+    fixture.componentInstance.addGame();
+    const secondGame = fixture.componentInstance.games.at(1).controls;
+
+    secondGame.notificationRecipientsText.setValue('SHARED@example.com, second@example.com');
+    expect(defaults.value).toBe('shared@example.com\nsecond@example.com');
+
+    secondGame.enabled.setValue(false);
+    expect(defaults.value).toBe('shared@example.com');
+
+    secondGame.enabled.setValue(true);
+    expect(defaults.value).toBe('shared@example.com\nsecond@example.com');
+
+    fixture.componentInstance.removeGame(1);
+    expect(defaults.value).toBe('shared@example.com');
+  });
+
   it('makes required fields optional when a game is disabled', () => {
     const game = fixture.componentInstance.games.at(0).controls;
     game.gameName.setValue('');

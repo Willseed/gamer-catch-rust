@@ -321,7 +321,9 @@
                     isInvalidField('games.' + index + '.notificationRecipients') || null
                   "
                 ></textarea>
-                <small>每行或逗號分隔；留白就使用下一節的預設收件人。</small>
+                <small>
+                  每行或逗號分隔；填入的地址會同步加入下一節的「預設通知收件人」，留白就使用預設值。
+                </small>
               </label>
             </div>
 
@@ -405,8 +407,9 @@
               placeholder="owner@example.com&#10;backup@example.com"
               data-config-path="gmail.defaultRecipients"
               [attr.aria-invalid]="isInvalidField('gmail.defaultRecipients') || null"
+              (blur)="syncDefaultRecipientsOnBlur()"
             ></textarea>
-            <small>支援多人；每行或逗號分隔，最多 50 個不同地址。</small>
+            <small> 遊戲專用收件人會自動同步至此；每行或逗號分隔，最多 50 個不同地址。 </small>
           </label>
           <div class="form-field span-two">
             <label for="gmail-oauth-client-file">

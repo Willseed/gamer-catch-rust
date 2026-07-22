@@ -85,8 +85,12 @@ export class GeneratorPage {
   readonly preview = signal('');
   readonly message = signal('');
   readonly validationAttempted = signal(false);
+  private readonly autoSyncedDefaultRecipientKeys = new Set<string>();
 
   constructor() {
+    this.games.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.syncGameRecipientsToDefaults());
     this.form.valueChanges
       .pipe(startWith(this.form.getRawValue()), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.refreshOutput());
@@ -119,6 +123,10 @@ export class GeneratorPage {
     }
     this.games.removeAt(index);
     this.refreshOutput();
+  }
+
+  syncDefaultRecipientsOnBlur(): void {
+    this.syncGameRecipientsToDefaults();
   }
 
   issueId(issue: ConfigIssue, index: number): string {
@@ -165,7 +173,55 @@ export class GeneratorPage {
     this.message.set('');
   }
 
+  private syncGameRecipientsToDefaults(): void {
+    const defaultControl = this.form.controls.gmail.controls.defaultRecipientsText;
+    const currentDefaults = parseRecipients(defaultControl.value);
+    const gameRecipients = this.games.controls.flatMap((game) =>
+      game.controls.enabled.value
+        ? parseRecipients(game.controls.notificationRecipientsText.value)
+        : [],
+    );
+    const desiredKeys = new Set(gameRecipients.map((recipient) => this.recipientKey(recipient)));
+    const nextAutoSyncedKeys = new Set<string>();
+    let changed = false;
+
+    const nextDefaults = currentDefaults.filter((recipient) => {
+      const key = this.recipientKey(recipient);
+      if (this.autoSyncedDefaultRecipientKeys.has(key) && !desiredKeys.has(key)) {
+        changed = true;
+        return false;
+      }
+      if (this.autoSyncedDefaultRecipientKeys.has(key)) {
+        nextAutoSyncedKeys.add(key);
+      }
+      return true;
+    });
+    const presentKeys = new Set(nextDefaults.map((recipient) => this.recipientKey(recipient)));
+
+    for (const recipient of gameRecipients) {
+      const key = this.recipientKey(recipient);
+      if (presentKeys.has(key)) {
+        continue;
+      }
+      nextDefaults.push(recipient);
+      presentKeys.add(key);
+      nextAutoSyncedKeys.add(key);
+      changed = true;
+    }
+
+    this.autoSyncedDefaultRecipientKeys.clear();
+    nextAutoSyncedKeys.forEach((key) => this.autoSyncedDefaultRecipientKeys.add(key));
+    if (changed) {
+      defaultControl.setValue(nextDefaults.join('\n'));
+    }
+  }
+
+  private recipientKey(recipient: string): string {
+    return recipient.toLocaleLowerCase('en-US');
+  }
+
   private validateForExport(action: '下載' | '複製'): boolean {
+    this.syncGameRecipientsToDefaults();
     const config = this.toConfig();
     const issues = validateConfig(config);
     this.form.markAllAsTouched();

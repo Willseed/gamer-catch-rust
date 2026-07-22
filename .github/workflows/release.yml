@@ -222,17 +222,25 @@ jobs:
         if: always()
         shell: bash
         run: |
-          if [[ -n "${MACOS_SIGNING_KEYCHAIN:-}" ]]; then
-            security delete-keychain "$MACOS_SIGNING_KEYCHAIN" 2>/dev/null || true
+          cleanup_failed=0
+          if [[ -n "${MACOS_SIGNING_KEYCHAIN:-}" && -e "$MACOS_SIGNING_KEYCHAIN" ]]; then
+            if ! security delete-keychain "$MACOS_SIGNING_KEYCHAIN"; then
+              echo "Failed to delete the temporary signing keychain." >&2
+              cleanup_failed=1
+            fi
           fi
           for sensitive_path in \
             "${MACOS_SIGNING_CERTIFICATE:-}" \
             "${MACOS_NOTARY_KEY_PATH:-}"
           do
             if [[ -n "$sensitive_path" ]]; then
-              rm -f "$sensitive_path"
+              if ! rm -f "$sensitive_path"; then
+                echo "Failed to delete a temporary signing credential." >&2
+                cleanup_failed=1
+              fi
             fi
           done
+          exit "$cleanup_failed"
 
       - name: Validate package
         run: python3 scripts/validate-package.py --platform macos dist/GamerCatch-macOS-arm64.zip

@@ -147,7 +147,7 @@ Windows PowerShell：
 macOS 正式 Release 採 fail-closed：必須使用 `Developer ID Application` 簽署所有 Mach-O，並取得
 Apple notarization 的 `Accepted` 結果，否則不會上傳 macOS artifact。憑證、temporary Keychain、
 GitHub `release` environment secrets 與 ZIP 限制詳見
-[macOS 簽章與公證說明](docs/macos-signing.md)。Windows 正式封裝建議使用公開信任的
+[macOS 簽章與公證說明](https://github.com/Willseed/gamer-catch-rust/blob/main/docs/macos-signing.md)。Windows 正式封裝建議使用公開信任的
 Authenticode 憑證；目前未設定 Windows 簽章時，只能明確使用 `ALLOW_UNSIGNED_WINDOWS=1`
 製作預覽包。簽章不能保證 SmartScreen 永不警告，使用者仍應只從官方 Release 下載並核對
 `SHA256SUMS.txt`。

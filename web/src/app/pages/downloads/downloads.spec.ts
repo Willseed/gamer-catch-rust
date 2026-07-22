@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { HttpEventType, HttpHeaders } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -59,6 +60,11 @@ describe('DownloadsPage', () => {
     httpTesting = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(DownloadsPage);
     fixture.detectChanges();
+
+    // Keep every test independent of the operating system used by the test runner.
+    fixture.componentInstance.detectedPlatform.set('windows');
+    fixture.componentInstance.dismissSupportToast();
+    fixture.detectChanges();
   });
 
   afterEach(() => {
@@ -105,7 +111,9 @@ describe('DownloadsPage', () => {
 
   it('automatically dismisses the support toast after six seconds', () => {
     let timeoutCallback: (() => void) | undefined;
-    const setTimeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation((handler) => {
+    const browserWindow = TestBed.inject(DOCUMENT).defaultView;
+    expect(browserWindow).not.toBeNull();
+    const setTimeoutSpy = vi.spyOn(browserWindow!, 'setTimeout').mockImplementation((handler) => {
       if (typeof handler === 'function') {
         timeoutCallback = () => handler();
       }
@@ -113,7 +121,7 @@ describe('DownloadsPage', () => {
     });
 
     fixture.componentInstance.detectedPlatform.set('linux');
-    fixture.detectChanges();
+    fixture.componentInstance.downloadForDetectedPlatform();
 
     expect(fixture.componentInstance.supportToast()).not.toBeNull();
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 6_000);

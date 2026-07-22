@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.2.2 - 2026-07-23
+
+- macOS arm64 發行包內的 `GamerCatch` 與 Playwright 隨附 Node 改用 Developer ID Application 簽章，並驗證 hardened runtime、secure timestamp 與 Developer Team ID。
+- macOS ZIP 只有在 Apple 公證回傳 `Accepted` 且 log issues 為 0 後才會發布；缺少簽章或公證資料時採 fail-closed，不會退回未簽章版本。
+- 強化簽章憑證隔離與清理：建置完成後才注入憑證，使用短效 temporary Keychain，並在所有結果下刪除 `.p12`、`.p8` 與 Keychain。
+- Google Cloud Gmail OAuth 教學改用目前介面的繁體中文名稱，補充「電腦版應用程式」用戶端與 JSON 下載時機。
+- 重構發行 ZIP 驗證程式，降低認知複雜度並集中重複常數，同時保留既有安全檢核。
+- Windows x64 仍未使用 Authenticode 簽章，SmartScreen 可能顯示未知發行者；macOS ZIP 無法 staple，且 `.command` 為獨立 shell script，仍不能保證所有環境第一次執行都不顯示 Gatekeeper 提示。
+
 ## 0.2.1 - 2026-07-22
 
 - 新增 Angular 22／TypeScript 6 網站與零程式設定產生器，支援多遊戲、多 Google Sheets、多人帳號與多人 Gmail 收件人。

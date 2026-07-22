@@ -82,6 +82,7 @@ describe('GuidePage high-risk contracts', () => {
       ?.textContent?.replace(/\s+/gu, ' ');
     const gmailSection = element.querySelector('#gmail-oauth');
     const gmailText = gmailSection?.textContent?.replace(/\s+/gu, ' ') ?? '';
+    const downloadText = element.querySelector('#download')?.textContent?.replace(/\s+/gu, ' ');
 
     expect([...heroSteps].map((step) => step.textContent?.replace(/\s+/gu, ' ').trim())).toEqual([
       '1下載並解壓縮',
@@ -91,7 +92,12 @@ describe('GuidePage high-risk contracts', () => {
     expect(element.querySelector('#config-placement')?.closest('.guide-section')?.id).toBe(
       'config-generator',
     );
+    expect(downloadText).toContain('config.example.toml');
+    expect(downloadText).toContain('新下載的 ZIP 本身不會附上 config.toml');
     expect(firstSetupText).toContain('不會打開或修改 config.toml');
+    expect(firstSetupText).toContain('Developer ID Application 簽章');
+    expect(firstSetupText).toContain('Apple 公證通過後才會發布');
+    expect(firstSetupText).toContain('ZIP 本身無法 staple');
     expect(text).toContain('這個網站不收憑證');
     expect(text).toContain('不能同時搜尋手機與 PC 排行榜');
 

@@ -87,7 +87,7 @@
               <li>雙擊 ZIP，把完整的 GamerCatch 資料夾移到「文件」等固定位置。</li>
               <li>
                 確認資料夾內有 GamerCatch、三個 <code>.command</code>、
-                <code>config.toml</code>、<code>credentials</code> 與
+                <code>config.example.toml</code>、<code>credentials</code> 與
                 <code>playwright-driver</code>。
               </li>
             </ol>
@@ -111,11 +111,18 @@
               <li>在 ZIP 上按右鍵，選「全部解壓縮」，再進入新資料夾操作。</li>
               <li>
                 確認資料夾內有 GamerCatch.exe、四個 <code>.cmd</code>、
-                <code>install-windows-task.ps1</code>、<code>config.toml</code>、
+                <code>install-windows-task.ps1</code>、<code>config.example.toml</code>、
                 <code>credentials</code> 與 <code>playwright-driver</code>。
               </li>
             </ol>
           </section>
+        </div>
+
+        <div class="callout" role="note">
+          <strong>看到 config.example.toml 是正常的</strong>
+          它只是安全範例，不會被程式自動使用；新下載的 ZIP 本身不會附上
+          <code>config.toml</code>。完成 Google 設定後，再由<a routerLink="/generator">設定產生器</a
+          >下載自己的 <code>config.toml</code>，放到 GamerCatch 資料夾最外層。
         </div>
 
         <div class="callout callout--danger" role="alert">
@@ -173,16 +180,20 @@
           <section class="platform-card">
             <span id="first-setup-macos" class="anchor-alias" aria-hidden="true"></span>
             <p class="platform-label">macOS</p>
-            <h3>先用右鍵打開，不必先進系統設定</h3>
+            <h3>先直接雙擊，若出現提示再用右鍵打開</h3>
             <p>
-              目前預覽版尚未使用 Developer ID 簽章與 Apple 公證，因此無法安全保證直接雙擊時完全沒有
-              Gatekeeper 提示。先核對下載來源與雜湊，再按住 Control
-              點擊腳本（或按右鍵），選「打開」→「打開」；通常只需對每支腳本操作一次，不必先進入系統設定。
+              自 v0.2.2 起，下載包內的 GamerCatch 與 Playwright 執行檔已使用 Developer ID
+              Application 簽章，ZIP 也只有在 Apple
+              公證通過後才會發布。核對下載來源與雜湊後，可先直接雙擊
+              <code>.command</code>；不需要預先打開系統設定。
             </p>
             <p>
-              若這個選項仍被封鎖，才到「系統設定」→「隱私權與安全性」確認；公司管理的 Mac 請交由 IT
-              管理員處理。不要執行來路不明的 <code>xattr</code>、<code>spctl</code>
-              指令，也不要停用 Gatekeeper。
+              ZIP 本身無法 staple，三支 <code>.command</code> 也是獨立 shell script，因此部分 macOS
+              版本或組織政策仍可能顯示首次提示。遇到提示時，按住 Control
+              點擊腳本（或按右鍵），選「打開」→「打開」；
+              若仍被封鎖，才到「系統設定」→「隱私權與安全性」確認。公司管理的 Mac 請交由 IT
+              管理員處理；不要執行來路不明的 <code>xattr</code>、<code>spctl</code> 指令，也不要停用
+              Gatekeeper。
             </p>
           </section>
           <section class="platform-card">

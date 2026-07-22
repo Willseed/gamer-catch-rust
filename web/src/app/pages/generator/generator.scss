@@ -168,6 +168,17 @@ select:hover {
   border-color: #11151a;
 }
 
+input[aria-invalid='true'],
+textarea[aria-invalid='true'],
+select[aria-invalid='true'] {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px rgb(162 15 26 / 18%);
+}
+
+.credential-file-input:has(input[aria-invalid='true']) .credential-path-prefix {
+  border-color: var(--error);
+}
+
 .span-two {
   grid-column: span 2;
 }

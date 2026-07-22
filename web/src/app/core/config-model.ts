@@ -265,17 +265,33 @@ function addGameIssues(
     });
   }
 
-  const columns = [game.dateColumn, game.rankColumn, game.popularityColumn].map(normalizeColumn);
-  if (columns.some((column) => !/^[A-Z]{1,3}$/u.test(column))) {
+  const columns = [
+    { path: 'dateColumn', label: '日期欄位', value: normalizeColumn(game.dateColumn) },
+    { path: 'rankColumn', label: '排行欄位', value: normalizeColumn(game.rankColumn) },
+    {
+      path: 'popularityColumn',
+      label: '人氣欄位',
+      value: normalizeColumn(game.popularityColumn),
+    },
+  ];
+  const invalidColumns = columns.filter((column) => !/^[A-Z]{1,3}$/u.test(column.value));
+  for (const column of invalidColumns) {
     issues.push({
-      path: `${prefix}.columns`,
-      message: `遊戲「${name || index + 1}」：欄位請填 A、B、AA 這類英文字母。`,
+      path: `${prefix}.${column.path}`,
+      message: `遊戲「${name || index + 1}」：${column.label}請填 A、B、AA 這類英文字母。`,
     });
-  } else if (new Set(columns).size !== columns.length) {
-    issues.push({
-      path: `${prefix}.columns`,
-      message: `遊戲「${name || index + 1}」：日期、排行、人氣欄位不可重複。`,
-    });
+  }
+  if (invalidColumns.length === 0) {
+    const seenColumns = new Set<string>();
+    for (const column of columns) {
+      if (seenColumns.has(column.value)) {
+        issues.push({
+          path: `${prefix}.${column.path}`,
+          message: `遊戲「${name || index + 1}」：${column.label}不可和其他輸出欄位重複。`,
+        });
+      }
+      seenColumns.add(column.value);
+    }
   }
 
   if (validateNotifications) {
@@ -294,9 +310,7 @@ function addGameIssues(
     });
   }
 
-  if (!game.writeToGoogleSheets) {
-    return;
-  }
+  // The setup flow fills these fields before the first safety run, while writes are still disabled.
   if (!normalizeSpreadsheetId(game.spreadsheetId)) {
     issues.push({
       path: `${prefix}.spreadsheetId`,
@@ -331,11 +345,14 @@ function addDestinationCollisionIssues(issues: ConfigIssue[], games: GameSetting
       });
     }
     dateCells.add(dateCell);
-    for (const column of [game.rankColumn, game.popularityColumn]) {
-      const outputCell = destination + normalizeColumn(column);
+    for (const column of [
+      { path: 'rankColumn', value: game.rankColumn },
+      { path: 'popularityColumn', value: game.popularityColumn },
+    ]) {
+      const outputCell = destination + normalizeColumn(column.value);
       if (dateCells.has(outputCell) || outputCells.has(outputCell)) {
         issues.push({
-          path: `games.${index}.columns`,
+          path: `games.${index}.${column.path}`,
           message: `遊戲「${game.gameName}」：Google Sheets 輸出欄位與另一個遊戲重疊。`,
         });
       }

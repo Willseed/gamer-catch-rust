@@ -199,12 +199,53 @@ describe('serializeConfig', () => {
 });
 
 describe('validateConfig sheet destinations', () => {
+  it('requires complete Google Sheets details before the safety run enables writes', () => {
+    const configuration = config([
+      game({
+        writeToGoogleSheets: false,
+        spreadsheetId: '',
+        worksheetName: '',
+      }),
+    ]);
+
+    expect(pathsFor(configuration)).toEqual(
+      expect.arrayContaining(['games.0.spreadsheetId', 'games.0.worksheetName']),
+    );
+  });
+
+  it('allows an unfinished disabled game', () => {
+    const configuration = config([
+      game({
+        enabled: false,
+        gameName: '',
+        spreadsheetId: '',
+        serviceAccountKeyFileName: '',
+        worksheetName: '',
+      }),
+      game({ gameName: '啟用的遊戲', spreadsheetId: 'active-game-sheet' }),
+    ]);
+
+    expect(
+      validateConfig(configuration).filter((issue) => issue.path.startsWith('games.0')),
+    ).toEqual([]);
+  });
+
+  it('reports every empty output column at the field that needs input', () => {
+    const configuration = config([
+      game({ spreadsheetId: 'sheet-a', dateColumn: '', rankColumn: '', popularityColumn: 'C' }),
+    ]);
+
+    expect(pathsFor(configuration)).toContain('games.0.dateColumn');
+    expect(pathsFor(configuration)).toContain('games.0.rankColumn');
+    expect(pathsFor(configuration)).not.toContain('games.0.columns');
+  });
+
   it('rejects duplicate date, rank, and popularity columns inside one game', () => {
     const configuration = config([
       game({ dateColumn: ' a ', rankColumn: 'A', popularityColumn: 'C' }),
     ]);
 
-    expect(pathsFor(configuration)).toContain('games.0.columns');
+    expect(pathsFor(configuration)).toContain('games.0.rankColumn');
   });
 
   it('detects overlap across games after normalizing the URL, worksheet, and columns', () => {
@@ -254,7 +295,9 @@ describe('validateConfig sheet destinations', () => {
 
     expect(
       validateConfig(configuration).filter((issue) =>
-        ['games.1.dateColumn', 'games.1.columns'].includes(issue.path),
+        ['games.1.dateColumn', 'games.1.rankColumn', 'games.1.popularityColumn'].includes(
+          issue.path,
+        ),
       ),
     ).toEqual([]);
   });

@@ -16,6 +16,11 @@ describe('GeneratorPage', () => {
     fixture.detectChanges();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it('explains the mobile and PC ranking category values next to the input', () => {
     const element = fixture.nativeElement as HTMLElement;
     const categoryInput = element.querySelector<HTMLInputElement>(
@@ -121,5 +126,131 @@ describe('GeneratorPage', () => {
         message: expect.stringContaining('只需填檔名'),
       }),
     );
+  });
+
+  it('makes required fields optional when a game is disabled', () => {
+    const game = fixture.componentInstance.games.at(0).controls;
+    game.gameName.setValue('');
+    game.enabled.setValue(false);
+    fixture.detectChanges();
+
+    const gameNameInput = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>(
+      'input[formcontrolname="gameName"]',
+    );
+
+    expect(gameNameInput?.required).toBe(false);
+    expect(game.gameName.hasError('required')).toBe(false);
+  });
+
+  it('keeps download clickable, blocks an incomplete config, and focuses its first field', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const downloadButton = element.querySelector<HTMLButtonElement>('.download-actions button');
+    const spreadsheetInput = element.querySelector<HTMLInputElement>(
+      'input[formcontrolname="spreadsheetId"]',
+    );
+    if (!downloadButton || !spreadsheetInput) {
+      throw new Error('找不到下載按鈕或試算表欄位');
+    }
+
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(spreadsheetInput, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    const focus = vi.spyOn(spreadsheetInput, 'focus');
+    const anchorClick = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+
+    expect(downloadButton.disabled).toBe(false);
+    downloadButton.click();
+    fixture.detectChanges();
+
+    expect(anchorClick).not.toHaveBeenCalled();
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(spreadsheetInput.getAttribute('aria-invalid')).toBe('true');
+    expect(fixture.componentInstance.message()).toContain('完成所有必填欄位');
+  });
+
+  it('focuses the topmost invalid field when several required fields are empty', () => {
+    const game = fixture.componentInstance.games.at(0).controls;
+    game.serviceAccountKeyFileName.setValue('');
+    game.worksheetName.setValue('');
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const worksheetInput = element.querySelector<HTMLInputElement>(
+      'input[formcontrolname="worksheetName"]',
+    );
+    const downloadButton = element.querySelector<HTMLButtonElement>('.download-actions button');
+    if (!worksheetInput || !downloadButton) {
+      throw new Error('找不到下載按鈕或工作表欄位');
+    }
+
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(worksheetInput, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    const focus = vi.spyOn(worksheetInput, 'focus');
+
+    expect(fixture.componentInstance.issues()[0].path).not.toBe('games.0.worksheetName');
+    downloadButton.click();
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  });
+
+  it('opens advanced settings before focusing an invalid field inside them', () => {
+    fixture.componentInstance.games.at(0).controls.spreadsheetId.setValue('sheet-a');
+    fixture.componentInstance.form.controls.bahamut.controls.navigationTimeoutMs.setValue(0);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const details = element.querySelector<HTMLDetailsElement>('.form-section details');
+    const timeoutInput = element.querySelector<HTMLInputElement>(
+      'input[formcontrolname="navigationTimeoutMs"]',
+    );
+    const downloadButton = element.querySelector<HTMLButtonElement>('.download-actions button');
+    if (!details || !timeoutInput || !downloadButton) {
+      throw new Error('找不到進階設定、頁面逾時欄位或下載按鈕');
+    }
+
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(timeoutInput, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    const focus = vi.spyOn(timeoutInput, 'focus');
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: true }) as MediaQueryList),
+    );
+
+    expect(details.open).toBe(false);
+    downloadButton.click();
+
+    expect(details.open).toBe(true);
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'center' });
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  });
+
+  it('downloads after every required field is valid', () => {
+    fixture.componentInstance.games.at(0).controls.spreadsheetId.setValue('sheet-a');
+    const createObjectURL = vi.fn(() => 'blob:config');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+    const anchorClick = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+
+    fixture.componentInstance.downloadConfig();
+
+    expect(fixture.componentInstance.issues()).toEqual([]);
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(anchorClick).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:config');
+    expect(fixture.componentInstance.message()).toContain('config.toml 已下載');
   });
 });

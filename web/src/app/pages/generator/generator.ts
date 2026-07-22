@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
+import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -24,10 +24,7 @@ type GameForm = ReturnType<typeof createGameForm>;
 function createGameForm(index: number, source: GameSettings = createDefaultGame(index)) {
   return new FormGroup({
     enabled: new FormControl(source.enabled, { nonNullable: true }),
-    gameName: new FormControl(source.gameName, {
-      nonNullable: true,
-      validators: [Validators.required],
-    }),
+    gameName: new FormControl(source.gameName, { nonNullable: true }),
     writeToGoogleSheets: new FormControl(source.writeToGoogleSheets, { nonNullable: true }),
     spreadsheetId: new FormControl(source.spreadsheetId, { nonNullable: true }),
     serviceAccountKeyFileName: new FormControl(source.serviceAccountKeyFileName, {
@@ -55,7 +52,9 @@ function createGameForm(index: number, source: GameSettings = createDefaultGame(
   styleUrl: './generator.scss',
 })
 export class GeneratorPage {
+  private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly hostElement = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly maxGames = MAX_GAMES;
   readonly games = new FormArray<GameForm>([createGameForm(0)]);
@@ -85,6 +84,7 @@ export class GeneratorPage {
   readonly issues = signal<ConfigIssue[]>([]);
   readonly preview = signal('');
   readonly message = signal('');
+  readonly validationAttempted = signal(false);
 
   constructor() {
     this.form.valueChanges
@@ -125,9 +125,15 @@ export class GeneratorPage {
     return `${issue.path}-${index}`.replaceAll('.', '-');
   }
 
+  isInvalidField(path: string): boolean {
+    return (
+      this.validationAttempted() &&
+      this.issues().some((issue) => this.issueTargetPath(issue.path) === path)
+    );
+  }
+
   async copyConfig(): Promise<void> {
-    if (this.issues().length > 0) {
-      this.message.set('請先修正上方提示，再複製設定檔。');
+    if (!this.validateForExport('複製')) {
       return;
     }
     try {
@@ -139,8 +145,7 @@ export class GeneratorPage {
   }
 
   downloadConfig(): void {
-    if (this.issues().length > 0) {
-      this.message.set('請先修正上方提示，再下載設定檔。');
+    if (!this.validateForExport('下載')) {
       return;
     }
     const blob = new Blob([this.preview()], { type: 'text/plain;charset=utf-8' });
@@ -158,6 +163,68 @@ export class GeneratorPage {
     this.issues.set(validateConfig(config));
     this.preview.set(serializeConfig(config));
     this.message.set('');
+  }
+
+  private validateForExport(action: '下載' | '複製'): boolean {
+    const config = this.toConfig();
+    const issues = validateConfig(config);
+    this.form.markAllAsTouched();
+    this.issues.set(issues);
+    this.preview.set(serializeConfig(config));
+
+    if (issues.length === 0) {
+      this.validationAttempted.set(false);
+      return true;
+    }
+
+    this.validationAttempted.set(true);
+    const firstIssue = this.focusFirstIssue(issues);
+    const guidance = `請先完成所有必填欄位並修正標示內容，再${action}設定檔。`;
+    this.message.set(firstIssue ? `${firstIssue.message} ${guidance}` : guidance);
+    return false;
+  }
+
+  private focusFirstIssue(issues: ConfigIssue[]): ConfigIssue | undefined {
+    const targetPaths = new Set(issues.map((issue) => this.issueTargetPath(issue.path)));
+    const target = Array.from(
+      this.hostElement.nativeElement.querySelectorAll<HTMLElement>('[data-config-path]'),
+    ).find((element) => targetPaths.has(element.dataset['configPath'] ?? ''));
+
+    if (!target) {
+      return undefined;
+    }
+
+    const details = target.closest<HTMLDetailsElement>('details');
+    if (details) {
+      details.open = true;
+    }
+
+    const prefersReducedMotion =
+      this.document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    target.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'center',
+    });
+    target.focus({ preventScroll: true });
+
+    const targetPath = target.dataset['configPath'];
+    return issues.find((issue) => this.issueTargetPath(issue.path) === targetPath);
+  }
+
+  private issueTargetPath(path: string): string {
+    if (path === 'games') {
+      return 'games.0.enabled';
+    }
+    if (path === 'gmail.recipients') {
+      return 'gmail.defaultRecipients';
+    }
+
+    const gameColumns = /^games\.(\d+)\.columns$/u.exec(path);
+    if (gameColumns) {
+      return `games.${gameColumns[1]}.dateColumn`;
+    }
+
+    return path;
   }
 
   private toConfig(): GamerCatchConfig {

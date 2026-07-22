@@ -15,7 +15,12 @@
     </div>
   </section>
 
-  <form class="generator-form content-width" [formGroup]="form" novalidate>
+  <form
+    class="generator-form content-width"
+    [formGroup]="form"
+    (ngSubmit)="downloadConfig()"
+    novalidate
+  >
     <section class="form-section" formGroupName="bahamut" aria-labelledby="bahamut-heading">
       <div class="section-heading">
         <span class="step">1</span>
@@ -36,6 +41,9 @@
             step="1"
             formControlName="category"
             inputmode="numeric"
+            required
+            data-config-path="bahamut.category"
+            [attr.aria-invalid]="isInvalidField('bahamut.category') || null"
             aria-describedby="category-help"
           />
           <small id="category-help">
@@ -52,6 +60,9 @@
             step="1"
             formControlName="startPage"
             inputmode="numeric"
+            required
+            data-config-path="bahamut.startPage"
+            [attr.aria-invalid]="isInvalidField('bahamut.startPage') || null"
           />
         </label>
         <label>
@@ -63,6 +74,9 @@
             step="1"
             formControlName="endPage"
             inputmode="numeric"
+            required
+            data-config-path="bahamut.endPage"
+            [attr.aria-invalid]="isInvalidField('bahamut.endPage') || null"
           />
         </label>
       </div>
@@ -77,11 +91,23 @@
               max="120000"
               step="1000"
               formControlName="navigationTimeoutMs"
+              required
+              data-config-path="bahamut.navigationTimeoutMs"
+              [attr.aria-invalid]="isInvalidField('bahamut.navigationTimeoutMs') || null"
             />
           </label>
           <label>
             <span>翻頁等待（毫秒）</span>
-            <input type="number" min="0" max="60000" step="100" formControlName="pageDelayMs" />
+            <input
+              type="number"
+              min="0"
+              max="60000"
+              step="100"
+              formControlName="pageDelayMs"
+              required
+              data-config-path="bahamut.pageDelayMs"
+              [attr.aria-invalid]="isInvalidField('bahamut.pageDelayMs') || null"
+            />
           </label>
           <label class="toggle-row">
             <input type="checkbox" formControlName="headless" />
@@ -110,34 +136,63 @@
                 <h3>{{ game.controls.gameName.value || '尚未命名' }}</h3>
               </div>
               <label class="toggle-row strong-toggle">
-                <input type="checkbox" formControlName="enabled" />
+                <input
+                  type="checkbox"
+                  formControlName="enabled"
+                  [attr.data-config-path]="'games.' + index + '.enabled'"
+                  [attr.aria-invalid]="isInvalidField('games.' + index + '.enabled') || null"
+                />
                 <span>啟用</span>
               </label>
             </header>
 
             <div class="field-grid">
               <label class="span-two">
-                <span>遊戲名稱 <b aria-hidden="true">*</b></span>
+                <span>
+                  遊戲名稱
+                  @if (game.controls.enabled.value) {
+                    <b aria-hidden="true">*</b>
+                  }
+                </span>
                 <input
                   type="text"
                   formControlName="gameName"
                   placeholder="例如：夜鴉"
                   autocomplete="off"
+                  [required]="game.controls.enabled.value"
+                  [attr.data-config-path]="'games.' + index + '.gameName'"
+                  [attr.aria-invalid]="isInvalidField('games.' + index + '.gameName') || null"
                 />
                 <small>要和巴哈排行榜顯示的名稱一致。</small>
               </label>
               <label>
-                <span>工作表名稱</span>
+                <span>
+                  工作表名稱
+                  @if (game.controls.enabled.value) {
+                    <b aria-hidden="true">*</b>
+                  }
+                </span>
                 <input
                   type="text"
                   formControlName="worksheetName"
                   placeholder="每日排名"
                   autocomplete="off"
+                  [required]="game.controls.enabled.value"
+                  [attr.data-config-path]="'games.' + index + '.worksheetName'"
+                  [attr.aria-invalid]="isInvalidField('games.' + index + '.worksheetName') || null"
                 />
               </label>
               <label>
                 <span>資料起始列</span>
-                <input type="number" min="2" step="1" formControlName="firstDataRow" />
+                <input
+                  type="number"
+                  min="2"
+                  step="1"
+                  formControlName="firstDataRow"
+                  [required]="game.controls.enabled.value"
+                  [attr.data-config-path]="'games.' + index + '.firstDataRow'"
+                  [attr.aria-invalid]="isInvalidField('games.' + index + '.firstDataRow') || null"
+                />
               </label>
             </div>
 
@@ -151,17 +206,30 @@
 
             <div class="field-grid sheets-fields">
               <label class="span-two">
-                <span>Google 試算表網址或 ID</span>
+                <span>
+                  Google 試算表網址或 ID
+                  @if (game.controls.enabled.value) {
+                    <b aria-hidden="true">*</b>
+                  }
+                </span>
                 <input
                   type="text"
                   formControlName="spreadsheetId"
                   placeholder="https://docs.google.com/spreadsheets/d/..."
                   autocomplete="off"
+                  [required]="game.controls.enabled.value"
+                  [attr.data-config-path]="'games.' + index + '.spreadsheetId'"
+                  [attr.aria-invalid]="isInvalidField('games.' + index + '.spreadsheetId') || null"
                 />
               </label>
               <div class="form-field span-two">
                 <label [for]="'service-account-file-' + index">
-                  此遊戲的 service account JSON 檔名
+                  <span>
+                    此遊戲的 service account JSON 檔名
+                    @if (game.controls.enabled.value) {
+                      <b aria-hidden="true">*</b>
+                    }
+                  </span>
                 </label>
                 <span class="credential-file-input">
                   <span class="credential-path-prefix" aria-hidden="true">credentials/</span>
@@ -172,6 +240,11 @@
                     placeholder="person-1-service-account.json"
                     autocomplete="off"
                     spellcheck="false"
+                    [required]="game.controls.enabled.value"
+                    [attr.data-config-path]="'games.' + index + '.serviceAccountKeyFileName'"
+                    [attr.aria-invalid]="
+                      isInvalidField('games.' + index + '.serviceAccountKeyFileName') || null
+                    "
                     [attr.aria-describedby]="'service-account-file-help-' + index"
                   />
                 </span>
@@ -186,11 +259,27 @@
               </div>
               <label>
                 <span>日期欄位</span>
-                <input type="text" maxlength="3" formControlName="dateColumn" autocomplete="off" />
+                <input
+                  type="text"
+                  maxlength="3"
+                  formControlName="dateColumn"
+                  autocomplete="off"
+                  [required]="game.controls.enabled.value"
+                  [attr.data-config-path]="'games.' + index + '.dateColumn'"
+                  [attr.aria-invalid]="isInvalidField('games.' + index + '.dateColumn') || null"
+                />
               </label>
               <label>
                 <span>排行欄位</span>
-                <input type="text" maxlength="3" formControlName="rankColumn" autocomplete="off" />
+                <input
+                  type="text"
+                  maxlength="3"
+                  formControlName="rankColumn"
+                  autocomplete="off"
+                  [required]="game.controls.enabled.value"
+                  [attr.data-config-path]="'games.' + index + '.rankColumn'"
+                  [attr.aria-invalid]="isInvalidField('games.' + index + '.rankColumn') || null"
+                />
               </label>
               <label>
                 <span>人氣欄位</span>
@@ -199,11 +288,21 @@
                   maxlength="3"
                   formControlName="popularityColumn"
                   autocomplete="off"
+                  [required]="game.controls.enabled.value"
+                  [attr.data-config-path]="'games.' + index + '.popularityColumn'"
+                  [attr.aria-invalid]="
+                    isInvalidField('games.' + index + '.popularityColumn') || null
+                  "
                 />
               </label>
               <label>
                 <span>時區</span>
-                <select formControlName="timezone">
+                <select
+                  formControlName="timezone"
+                  [required]="game.controls.enabled.value"
+                  [attr.data-config-path]="'games.' + index + '.timezone'"
+                  [attr.aria-invalid]="isInvalidField('games.' + index + '.timezone') || null"
+                >
                   <option value="Asia/Taipei">台北（Asia/Taipei）</option>
                   <option value="Asia/Tokyo">東京（Asia/Tokyo）</option>
                   <option value="Asia/Hong_Kong">香港（Asia/Hong_Kong）</option>
@@ -217,6 +316,10 @@
                   rows="3"
                   formControlName="notificationRecipientsText"
                   placeholder="owner@example.com&#10;backup@example.com"
+                  [attr.data-config-path]="'games.' + index + '.notificationRecipients'"
+                  [attr.aria-invalid]="
+                    isInvalidField('games.' + index + '.notificationRecipients') || null
+                  "
                 ></textarea>
                 <small>每行或逗號分隔；留白就使用下一節的預設收件人。</small>
               </label>
@@ -271,17 +374,28 @@
       @if (form.controls.gmail.controls.enabled.value) {
         <div class="field-grid gmail-fields">
           <label>
-            <span>寄件 Gmail 帳號</span>
+            <span>寄件 Gmail 帳號 <b aria-hidden="true">*</b></span>
             <input
               type="email"
               formControlName="senderEmail"
               placeholder="sender@gmail.com"
               autocomplete="email"
+              required
+              data-config-path="gmail.senderEmail"
+              [attr.aria-invalid]="isInvalidField('gmail.senderEmail') || null"
             />
           </label>
           <label>
-            <span>信件主旨前綴</span>
-            <input type="text" maxlength="60" formControlName="subjectPrefix" autocomplete="off" />
+            <span>信件主旨前綴 <b aria-hidden="true">*</b></span>
+            <input
+              type="text"
+              maxlength="60"
+              formControlName="subjectPrefix"
+              autocomplete="off"
+              required
+              data-config-path="gmail.subjectPrefix"
+              [attr.aria-invalid]="isInvalidField('gmail.subjectPrefix') || null"
+            />
           </label>
           <label class="span-two">
             <span>預設通知收件人</span>
@@ -289,11 +403,15 @@
               rows="3"
               formControlName="defaultRecipientsText"
               placeholder="owner@example.com&#10;backup@example.com"
+              data-config-path="gmail.defaultRecipients"
+              [attr.aria-invalid]="isInvalidField('gmail.defaultRecipients') || null"
             ></textarea>
             <small>支援多人；每行或逗號分隔，最多 50 個不同地址。</small>
           </label>
           <div class="form-field span-two">
-            <label for="gmail-oauth-client-file">Gmail OAuth 用戶端 JSON 檔名</label>
+            <label for="gmail-oauth-client-file">
+              <span>Gmail OAuth 用戶端 JSON 檔名 <b aria-hidden="true">*</b></span>
+            </label>
             <span class="credential-file-input">
               <span class="credential-path-prefix" aria-hidden="true">credentials/</span>
               <input
@@ -303,6 +421,9 @@
                 placeholder="gmail-oauth-client.json"
                 autocomplete="off"
                 spellcheck="false"
+                required
+                data-config-path="gmail.oauthClientSecretFileName"
+                [attr.aria-invalid]="isInvalidField('gmail.oauthClientSecretFileName') || null"
                 aria-describedby="gmail-oauth-client-file-help"
               />
             </span>
@@ -333,7 +454,7 @@
           <h3 id="issues-title">還有 {{ issues().length }} 個地方要確認</h3>
           <ul>
             @for (issue of issues(); track issueId(issue, $index)) {
-              <li>{{ issue.message }}</li>
+              <li [id]="issueId(issue, $index)">{{ issue.message }}</li>
             }
           </ul>
         </div>
@@ -344,14 +465,7 @@
       }
 
       <div class="download-actions">
-        <button
-          type="button"
-          class="primary-button"
-          (click)="downloadConfig()"
-          [disabled]="issues().length > 0"
-        >
-          步驟 3：下載 config.toml
-        </button>
+        <button type="submit" class="primary-button">步驟 3：下載 config.toml</button>
         <button
           type="button"
           class="secondary-button on-dark"

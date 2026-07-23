@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- 下載頁移除 Angular Blob 與 Cloudflare 代理下載，改為直接連到官方 GitHub Release，由瀏覽器原生管理下載進度與安全檢查。
+
 ## 0.2.2 - 2026-07-23
 
 - macOS arm64 發行包內的 `GamerCatch` 與 Playwright 隨附 Node 改用 Developer ID Application 簽章，並驗證 hardened runtime、secure timestamp 與 Developer Team ID。

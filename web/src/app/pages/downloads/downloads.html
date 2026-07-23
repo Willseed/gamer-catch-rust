@@ -33,65 +33,22 @@
             <p class="file-name">
               將下載 <strong>{{ release.fileName }}</strong>
             </p>
-          }
-          <button
-            type="button"
-            class="primary-button"
-            (click)="downloadForDetectedPlatform()"
-            [disabled]="isDownloading()"
-          >
-            @if (isDownloading()) {
-              正在下載…
-            } @else {
+            <a class="primary-button" [href]="release.directUrl">
               {{ platformView().buttonLabel }}
-            }
-          </button>
+            </a>
+            <p class="download-note">
+              下載會直接連到官方 GitHub Release；進度與安全檢查由瀏覽器顯示。
+            </p>
+          } @else {
+            <button type="button" class="primary-button" (click)="showDetectedPlatformSupport()">
+              {{ platformView().buttonLabel }}
+            </button>
+          }
           @if (platformView().guideFragment; as fragment) {
             <a routerLink="/guide" [fragment]="fragment" class="guide-link">查看第一次設定方式</a>
           }
         </div>
       </article>
-
-      @if (downloadState().status !== 'idle') {
-        <section class="download-progress" aria-labelledby="download-progress-title">
-          <div class="progress-heading">
-            <div>
-              <p class="eyebrow blue-text">下載狀態</p>
-              <h2 id="download-progress-title">{{ selectedDownload()?.fileName }}</h2>
-            </div>
-            <strong aria-live="polite">{{ progressStatus() }}</strong>
-          </div>
-          <progress
-            max="100"
-            [attr.value]="progressValue()"
-            [attr.aria-valuetext]="progressStatus()"
-            aria-label="ZIP 檔案下載進度"
-          >
-            {{ progressValue() ?? 0 }}%
-          </progress>
-          <div class="progress-footer">
-            <span>{{ progressSize() }}</span>
-            <div class="progress-actions">
-              @if (isDownloading()) {
-                <button type="button" class="progress-button" (click)="cancelDownload()">
-                  取消下載
-                </button>
-              } @else if (downloadState().status === 'error') {
-                <button type="button" class="progress-button" (click)="retryDownload()">
-                  重新嘗試
-                </button>
-                <a class="primary-button" [href]="selectedDownload()?.directUrl">GitHub 直接下載</a>
-              } @else if (downloadState().status === 'cancelled') {
-                <button type="button" class="primary-button" (click)="retryDownload()">
-                  重新開始下載
-                </button>
-              } @else if (downloadState().status === 'complete') {
-                <a class="primary-button" routerLink="/generator">步驟 2：開啟設定檔產生器</a>
-              }
-            </div>
-          </div>
-        </section>
-      }
     </div>
   </section>
 

@@ -1,5 +1,4 @@
 import { DOCUMENT } from '@angular/common';
-import { HttpEventType } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -9,25 +8,29 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import type { Subscription } from 'rxjs';
 
 import { SetupProgressComponent } from '../../shared/setup-progress/setup-progress';
-import {
-  RELEASE_DOWNLOADS,
-  ReleaseDownloadService,
-  type DownloadPlatform,
-} from './release-download.service';
 
-type DownloadStatus = 'idle' | 'starting' | 'downloading' | 'complete' | 'error' | 'cancelled';
+type DownloadPlatform = 'macos' | 'windows';
 
-interface DownloadState {
-  readonly status: DownloadStatus;
-  readonly platform: DownloadPlatform | null;
-  readonly loaded: number;
-  readonly total: number | null;
+interface ReleaseDownload {
+  readonly directUrl: string;
+  readonly fileName: string;
 }
+
+const RELEASE_DOWNLOADS: Readonly<Record<DownloadPlatform, ReleaseDownload>> = {
+  macos: {
+    directUrl:
+      'https://github.com/Willseed/gamer-catch-rust/releases/latest/download/GamerCatch-macOS-arm64.zip',
+    fileName: 'GamerCatch-macOS-arm64.zip',
+  },
+  windows: {
+    directUrl:
+      'https://github.com/Willseed/gamer-catch-rust/releases/latest/download/GamerCatch-Windows-x64.zip',
+    fileName: 'GamerCatch-Windows-x64.zip',
+  },
+};
 
 export type DetectedPlatform = DownloadPlatform | 'linux' | 'unsupported';
 
@@ -95,24 +98,6 @@ export function detectDownloadPlatform(
   return 'unsupported';
 }
 
-function formatBytes(value: number): string {
-  if (value < 1024) {
-    return `${value} B`;
-  }
-  const units = ['KB', 'MB', 'GB'];
-  let size = value / 1024;
-  let unitIndex = 0;
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex += 1;
-  }
-  return `${size.toFixed(size >= 10 ? 1 : 2)} ${units[unitIndex]}`;
-}
-
-function isZipContentType(value: string | null): boolean {
-  return value?.split(';', 1)[0]?.trim().toLowerCase() === 'application/zip';
-}
-
 @Component({
   selector: 'app-downloads',
   imports: [RouterLink, SetupProgressComponent],
@@ -123,8 +108,6 @@ function isZipContentType(value: string | null): boolean {
 export class DownloadsPage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
-  private readonly releaseDownload = inject(ReleaseDownloadService);
-  private activeDownload: Subscription | null = null;
   private toastTimer: number | null = null;
 
   readonly checksumsUrl =
@@ -180,66 +163,6 @@ export class DownloadsPage {
     }
   });
 
-  readonly downloadState = signal<DownloadState>({
-    status: 'idle',
-    platform: null,
-    loaded: 0,
-    total: null,
-  });
-  readonly isDownloading = computed(() => {
-    const status = this.downloadState().status;
-    return status === 'starting' || status === 'downloading';
-  });
-  readonly selectedDownload = computed(() => {
-    const platform = this.downloadState().platform;
-    return platform ? RELEASE_DOWNLOADS[platform] : null;
-  });
-  readonly progressValue = computed(() => {
-    const state = this.downloadState();
-    if (state.status === 'complete') {
-      return 100;
-    }
-    if (state.status === 'error') {
-      return 0;
-    }
-    if (!state.total || state.total <= 0) {
-      return null;
-    }
-    return Math.min(100, Math.round((state.loaded / state.total) * 100));
-  });
-  readonly progressStatus = computed(() => {
-    const state = this.downloadState();
-    const release = this.selectedDownload();
-    switch (state.status) {
-      case 'starting':
-        return `正在準備 ${release?.platformLabel ?? ''} 下載…`;
-      case 'downloading': {
-        const percentage = this.progressValue();
-        return percentage === null ? '正在下載…' : `正在下載… ${percentage}%`;
-      }
-      case 'complete':
-        return '下載完成，請解壓縮 ZIP。';
-      case 'error':
-        return '無法透過網站取得下載進度，請改用 GitHub 直接下載。';
-      case 'cancelled':
-        return '已取消下載。';
-      default:
-        return '';
-    }
-  });
-  readonly progressSize = computed(() => {
-    const { status, loaded, total } = this.downloadState();
-    if (status === 'error') {
-      return '未下載任何檔案';
-    }
-    if (loaded === 0) {
-      return '等待伺服器回應';
-    }
-    return total
-      ? `${formatBytes(loaded)} / ${formatBytes(total)}`
-      : `已下載 ${formatBytes(loaded)}`;
-  });
-
   constructor() {
     effect(() => {
       if (this.detectedPlatform() === 'linux') {
@@ -253,22 +176,18 @@ export class DownloadsPage {
     });
   }
 
-  downloadForDetectedPlatform(): void {
+  showDetectedPlatformSupport(): void {
     const platform = this.detectedPlatform();
-    if (platform === 'macos' || platform === 'windows') {
-      this.startDownload(platform);
-      return;
-    }
-
     if (platform === 'linux') {
       this.showLinuxUnsupportedToast();
       return;
     }
-
-    this.showSupportToast(
-      '目前不支援這個裝置',
-      '請使用 macOS Apple Silicon 或 Windows x64 電腦開啟此頁。',
-    );
+    if (platform === 'unsupported') {
+      this.showSupportToast(
+        '目前不支援這個裝置',
+        '請使用 macOS Apple Silicon 或 Windows x64 電腦開啟此頁。',
+      );
+    }
   }
 
   dismissSupportToast(): void {
@@ -277,78 +196,6 @@ export class DownloadsPage {
       this.toastTimer = null;
     }
     this.supportToast.set(null);
-  }
-
-  startDownload(platform: DownloadPlatform): void {
-    if (this.isDownloading()) {
-      return;
-    }
-
-    this.activeDownload?.unsubscribe();
-    this.downloadState.set({ status: 'starting', platform, loaded: 0, total: null });
-    this.activeDownload = this.releaseDownload
-      .download(platform)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (event) => {
-          if (event.type === HttpEventType.DownloadProgress) {
-            this.downloadState.update((state) => ({
-              ...state,
-              status: 'downloading',
-              loaded: event.loaded,
-              total: event.total ?? state.total,
-            }));
-          } else if (event.type === HttpEventType.Response) {
-            const isReleaseDownload = event.headers.get('X-GamerCatch-Download') === 'release';
-            if (
-              !isReleaseDownload ||
-              !isZipContentType(event.headers.get('Content-Type')) ||
-              !event.body ||
-              event.body.size === 0 ||
-              !this.saveBlob(event.body, RELEASE_DOWNLOADS[platform].fileName)
-            ) {
-              this.setDownloadError();
-              return;
-            }
-            this.downloadState.update((state) => ({
-              ...state,
-              status: 'complete',
-              loaded: event.body?.size ?? state.loaded,
-              total: state.total ?? event.body?.size ?? null,
-            }));
-          }
-        },
-        error: () => this.setDownloadError(),
-        complete: () => {
-          this.activeDownload = null;
-        },
-      });
-  }
-
-  cancelDownload(): void {
-    if (!this.isDownloading()) {
-      return;
-    }
-    this.activeDownload?.unsubscribe();
-    this.activeDownload = null;
-    this.downloadState.update((state) => ({ ...state, status: 'cancelled' }));
-  }
-
-  retryDownload(): void {
-    const platform = this.downloadState().platform;
-    if (platform) {
-      this.startDownload(platform);
-    }
-  }
-
-  private setDownloadError(): void {
-    this.activeDownload = null;
-    this.downloadState.update((state) => ({
-      ...state,
-      status: 'error',
-      loaded: 0,
-      total: null,
-    }));
   }
 
   private showSupportToast(title: string, message: string): void {
@@ -368,23 +215,5 @@ export class DownloadsPage {
       '目前不支援 Linux',
       '請改用 macOS Apple Silicon 或 Windows x64 電腦下載與執行 GamerCatch。',
     );
-  }
-
-  private saveBlob(blob: Blob, fileName: string): boolean {
-    const browserWindow = this.document.defaultView;
-    if (!browserWindow) {
-      return false;
-    }
-
-    const objectUrl = browserWindow.URL.createObjectURL(blob);
-    const anchor = this.document.createElement('a');
-    anchor.href = objectUrl;
-    anchor.download = fileName;
-    anchor.hidden = true;
-    this.document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    browserWindow.setTimeout(() => browserWindow.URL.revokeObjectURL(objectUrl), 1_000);
-    return true;
   }
 }

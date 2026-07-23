@@ -1,5 +1,4 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideHttpClient } from '@angular/common/http';
 import {
   provideRouter,
   type InMemoryScrollingOptions,
@@ -16,7 +15,6 @@ export const routerScrollingOptions: InMemoryScrollingOptions = {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideHttpClient(),
     provideRouter(routes, withInMemoryScrolling(routerScrollingOptions)),
   ],
 };

@@ -156,6 +156,11 @@ Authenticode 憑證；目前未設定 Windows 簽章時，只能明確使用 `AL
 製作預覽包。簽章不能保證 SmartScreen 永不警告，使用者仍應只從官方 Release 下載並核對
 `SHA256SUMS.txt`。
 
+正式 tag 不會重新建立已驗證的 ZIP。main CI 會保留綁定 commit SHA 的 Windows 候選包；macOS
+簽章 smoke test 會將它與已簽章、公證的 macOS 候選包合併並再次驗證。tag workflow 只接受同一
+SHA 的成功 CI／smoke run 與未過期、具 SHA-256 digest 的 artifact，再重新驗證並發布完全相同的
+位元組。
+
 ## 開發驗證
 
 ```bash

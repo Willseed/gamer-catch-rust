@@ -371,6 +371,20 @@ jobs:
           .\target\release-packager\release\gamercatch-release-packager.exe `
             validate --platform windows dist\GamerCatch-Windows-x64.zip
 
+      - name: Upload tested Windows release candidate
+        if: >-
+          runner.os == 'Windows' &&
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1, Node.js 24
+        with:
+          name: windows-release-candidate-${{ github.sha }}-attempt-${{ github.run_attempt }}
+          path: dist/GamerCatch-Windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          overwrite: false
+
   web:
     name: Angular 22 (Node.js 24)
     runs-on: ubuntu-latest
@@ -483,6 +497,74 @@ jobs:
             grep -F "$marker" scripts/package-macos.sh >/dev/null
           done
           grep -F 'is_uuid' tools/release-packager/src/notary.rs >/dev/null
+
+      - name: Require immutable release candidate reuse
+        run: |
+          ruby -ryaml <<'RUBY'
+          workflow = YAML.load_file('.github/workflows/ci.yml')
+          rust_job = workflow.fetch('jobs').fetch('rust')
+          steps = rust_job.fetch('steps')
+          build_name = 'Build and validate Windows release package'
+          upload_name = 'Upload tested Windows release candidate'
+          build_indexes = steps.each_index.select { |index| steps[index]['name'] == build_name }
+          upload_indexes = steps.each_index.select { |index| steps[index]['name'] == upload_name }
+          expression = '$' + '{{'
+          expected_upload = {
+            'name' => upload_name,
+            'if' => "runner.os == 'Windows' && github.event_name == 'push' && github.ref == 'refs/heads/main'",
+            'uses' => 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a',
+            'with' => {
+              'name' => "windows-release-candidate-#{expression} github.sha }}-attempt-#{expression} github.run_attempt }}",
+              'path' => 'dist/GamerCatch-Windows-x64.zip',
+              'if-no-files-found' => 'error',
+              'retention-days' => 14,
+              'compression-level' => 0,
+              'overwrite' => false
+            }
+          }
+          unless build_indexes.length == 1 && upload_indexes.length == 1 &&
+                 upload_indexes.first == build_indexes.first + 1 &&
+                 steps.fetch(upload_indexes.first) == expected_upload
+            abort 'The Windows candidate upload must remain the exact next fail-closed step after package validation.'
+          end
+          RUBY
+          for marker in \
+            'candidate_run_id' \
+            'event=workflow_dispatch' \
+            'head_sha=' \
+            'release_commit' \
+            '.workflow_run.head_sha' \
+            '^sha256:[0-9a-f]{64}$' \
+            'macos-release-candidate-' \
+            'windows-release-candidate-' \
+            'release-candidates-' \
+            'attempt-' \
+            'Audit reusable release candidates' \
+            'artifact-ids:' \
+            'run-id:' \
+            'digest-mismatch: error'
+          do
+            grep -F "$marker" .github/workflows/release.yml >/dev/null
+          done
+          if grep -F 'runs-on: windows-latest' .github/workflows/release.yml; then
+            echo 'Tag releases must reuse the Windows artifact from exact-SHA main CI.' >&2
+            exit 1
+          fi
+          if grep -F 'needs: [macos, windows]' .github/workflows/release.yml; then
+            echo 'Tag releases must publish the audited candidate instead of rebuilding it.' >&2
+            exit 1
+          fi
+          publish_job="$(sed -n '/^  publish:/,$p' .github/workflows/release.yml)"
+          for marker in \
+            'if: github.event_name == '\''push'\''' \
+            'environment: release' \
+            'actions: read' \
+            'contents: write' \
+            'candidate_artifact_id' \
+            'digest-mismatch: error'
+          do
+            grep -F "$marker" <<< "$publish_job" >/dev/null
+          done
 
       - name: Protect user config in macOS launchers
         run: |

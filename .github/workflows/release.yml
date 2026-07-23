@@ -16,6 +16,12 @@ jobs:
   verify-release-source:
     name: Verify tag source and CI
     runs-on: ubuntu-latest
+    outputs:
+      release_commit: ${{ steps.source.outputs.release_commit }}
+      ci_run_id: ${{ steps.source.outputs.ci_run_id }}
+      ci_artifact_id: ${{ steps.source.outputs.ci_artifact_id }}
+      candidate_run_id: ${{ steps.source.outputs.candidate_run_id }}
+      candidate_artifact_id: ${{ steps.source.outputs.candidate_artifact_id }}
     permissions:
       actions: read
       contents: read
@@ -32,11 +38,136 @@ jobs:
           rustup default 1.88.0
 
       - name: Require tested main source
+        id: source
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+
+          require_run() {
+            local run_id="$1"
+            local expected_path="$2"
+            local expected_event="$3"
+            local label="$4"
+            local run
+
+            run="$(
+              gh api --method GET \
+                "repos/$GITHUB_REPOSITORY/actions/runs/$run_id"
+            )"
+            if ! jq -e \
+              --arg run_id "$run_id" \
+              --arg expected_path "$expected_path" \
+              --arg expected_event "$expected_event" \
+              --arg release_commit "$release_commit" \
+              --arg repository "$GITHUB_REPOSITORY" \
+              '
+                (.id | tostring) == $run_id and
+                (.run_attempt | numbers) >= 1 and
+                .path == $expected_path and
+                .event == $expected_event and
+                .head_branch == "main" and
+                .head_sha == $release_commit and
+                .status == "completed" and
+                .conclusion == "success" and
+                .repository.full_name == $repository and
+                .head_repository.full_name == $repository and
+                .repository.id == .head_repository.id
+              ' <<< "$run" >/dev/null
+            then
+              echo "$label is not a successful exact-SHA run from the expected workflow and repository." >&2
+              exit 1
+            fi
+            printf '%s\n' "$run"
+          }
+
+          select_job_attempt() {
+            local run_id="$1"
+            local expected_name="$2"
+            local label="$3"
+            local job
+            local jobs
+
+            jobs="$(
+              gh api --method GET --paginate \
+                "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs" \
+                -f filter=all \
+                -f per_page=100 \
+                --jq '.jobs[]' |
+                jq -s '{jobs: .}'
+            )"
+            job="$(
+              jq -c \
+                --arg expected_name "$expected_name" \
+                --arg release_commit "$release_commit" \
+                '
+                  [.jobs[] |
+                    select(
+                      .name == $expected_name and
+                      .status == "completed" and
+                      .conclusion == "success" and
+                      .head_sha == $release_commit and
+                      (.run_attempt | numbers) >= 1
+                    )] |
+                  sort_by(.run_attempt, .completed_at) | reverse | first // empty
+                ' <<< "$jobs"
+            )"
+            if test -z "$job"; then
+              echo "$label has no successful exact-SHA $expected_name job." >&2
+              exit 1
+            fi
+            jq -r '.run_attempt' <<< "$job"
+          }
+
+          select_artifact() {
+            local run_id="$1"
+            local expected_name="$2"
+            local label="$3"
+            local artifact
+            local artifacts
+            local match_count
+
+            artifacts="$(
+              gh api --method GET --paginate \
+                "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" \
+                -f per_page=100 \
+                --jq '.artifacts[]' |
+                jq -s '{artifacts: .}'
+            )"
+            match_count="$(
+              jq \
+                --arg expected_name "$expected_name" \
+                --arg run_id "$run_id" \
+                --arg release_commit "$release_commit" \
+                '
+                  [.artifacts[] |
+                    select(
+                      .name == $expected_name and
+                      .expired == false and
+                      .size_in_bytes > 0 and
+                      (.workflow_run.id | tostring) == $run_id and
+                      .workflow_run.head_sha == $release_commit and
+                      ((.digest // "") | test("^sha256:[0-9a-f]{64}$"))
+                    )] | length
+                ' \
+                <<< "$artifacts"
+            )"
+            if test "$match_count" -ne 1; then
+              echo "$label must have exactly one current, nonempty, exact-SHA artifact with a valid digest; found $match_count." >&2
+              exit 1
+            fi
+            artifact="$(
+              jq -c --arg expected_name "$expected_name" \
+                '.artifacts[] | select(.name == $expected_name)' \
+                <<< "$artifacts"
+            )"
+            printf '%s\n' "$artifact"
+          }
+
           git fetch origin main --no-tags
           main_commit="$(git rev-parse origin/main)"
+          candidate_run_id=""
+          candidate_artifact_id=""
           if test "$GITHUB_EVENT_NAME" = "push"; then
             test "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" = "tag"
             release_commit="$(git rev-parse "$GITHUB_REF_NAME^{commit}")"
@@ -66,25 +197,108 @@ jobs:
               echo "Missing release notes for $GITHUB_REF_NAME." >&2
               exit 1
             fi
+
+            candidate_run_id="$(
+              gh api --method GET --paginate \
+                "repos/$GITHUB_REPOSITORY/actions/workflows/release.yml/runs" \
+                -f head_sha="$release_commit" \
+                -f event=workflow_dispatch \
+                -f status=completed \
+                -f per_page=100 \
+                --jq '.workflow_runs[]' |
+                jq -s -r '
+                  [.[] |
+                    select(.conclusion == "success" and .head_branch == "main")] |
+                  sort_by(.created_at) | reverse | first | .id // empty
+                '
+            )"
+            case "$candidate_run_id" in
+              '' | *[!0-9]*)
+                echo "No successful signing candidate run exists for $release_commit." >&2
+                exit 1
+                ;;
+            esac
+            require_run \
+              "$candidate_run_id" \
+              ".github/workflows/release.yml" \
+              "workflow_dispatch" \
+              "Signing candidate run $candidate_run_id" >/dev/null
+            candidate_job_attempt="$(
+              select_job_attempt \
+                "$candidate_run_id" \
+                "Audit reusable release candidates" \
+                "Signing candidate run $candidate_run_id"
+            )"
+            candidate_artifact="$(
+              select_artifact \
+                "$candidate_run_id" \
+                "release-candidates-$release_commit-attempt-$candidate_job_attempt" \
+                "Signing candidate run $candidate_run_id"
+            )"
+            candidate_artifact_id="$(jq -r '.id' <<< "$candidate_artifact")"
           else
             release_commit="$GITHUB_SHA"
             if test "$GITHUB_REF" != "refs/heads/main" || test "$release_commit" != "$main_commit"; then
               echo "Signing smoke tests must run from the current main HEAD." >&2
               exit 1
             fi
+            package_version="$(
+              cargo run --quiet --locked \
+                --package gamercatch-release-packager -- \
+                package-version Cargo.toml
+            )"
+            cargo run --quiet --locked \
+              --package gamercatch-release-packager -- \
+              verify-versions \
+              --expected "$package_version" \
+              Cargo.toml \
+              tools/release-packager/Cargo.toml \
+              web/package.json \
+              web/package-lock.json
+            if test ! -f "packaging/release-notes-v$package_version.md"; then
+              echo "Missing release notes for v$package_version." >&2
+              exit 1
+            fi
           fi
 
-          successful_runs="$(gh api --method GET \
-            "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" \
-            -f head_sha="$release_commit" \
-            -f event=push \
-            -f status=completed \
-            -f per_page=100 \
-            --jq '[.workflow_runs[] | select(.conclusion == "success" and .head_branch == "main")] | length')"
-          if test "$successful_runs" -lt 1; then
+          ci_run_id="$(
+            gh api --method GET --paginate \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" \
+              -f head_sha="$release_commit" \
+              -f event=push \
+              -f status=completed \
+              -f per_page=100 \
+              --jq '.workflow_runs[]' |
+              jq -s -r '
+                [.[] |
+                  select(.conclusion == "success" and .head_branch == "main")] |
+                sort_by(.created_at) | reverse | first | .id // empty
+              '
+          )"
+          case "$ci_run_id" in
+            '' | *[!0-9]*)
             echo "No successful main push CI run exists for $release_commit." >&2
             exit 1
-          fi
+              ;;
+          esac
+          require_run \
+            "$ci_run_id" \
+            ".github/workflows/ci.yml" \
+            "push" \
+            "Main CI run $ci_run_id" >/dev/null
+          ci_job_attempt="$(
+            select_job_attempt \
+              "$ci_run_id" \
+              "Rust (windows-latest)" \
+              "Main CI run $ci_run_id"
+          )"
+          ci_artifact="$(
+            select_artifact \
+              "$ci_run_id" \
+              "windows-release-candidate-$release_commit-attempt-$ci_job_attempt" \
+              "Main CI run $ci_run_id"
+          )"
+          ci_artifact_id="$(jq -r '.id' <<< "$ci_artifact")"
 
           guide_response="$(mktemp)"
           trap 'rm -f "$guide_response"' EXIT
@@ -110,16 +324,28 @@ jobs:
             fi
           done < <(git ls-files '*.json')
 
+          {
+            echo "release_commit=$release_commit"
+            echo "ci_run_id=$ci_run_id"
+            echo "ci_artifact_id=$ci_artifact_id"
+            echo "candidate_run_id=$candidate_run_id"
+            echo "candidate_artifact_id=$candidate_artifact_id"
+          } >> "$GITHUB_OUTPUT"
+
   macos:
-    name: Package macOS arm64
+    name: Prepare signed macOS release candidate
     needs: verify-release-source
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     timeout-minutes: 45
     environment: release
+    outputs:
+      artifact_id: ${{ steps.upload_candidate.outputs.artifact-id }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, Node.js 24
         with:
+          ref: ${{ needs.verify-release-source.outputs.release_commit }}
           persist-credentials: false
 
       - name: Install Rust 1.88
@@ -276,26 +502,30 @@ jobs:
           ./target/release-packager/release/gamercatch-release-packager
           validate --platform macos dist/GamerCatch-macOS-arm64.zip
 
-      - name: Upload macOS assets
+      - name: Upload signed macOS release candidate
+        id: upload_candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1, Node.js 24
         with:
-          name: macos-assets
-          if-no-files-found: error
+          name: macos-release-candidate-${{ needs.verify-release-source.outputs.release_commit }}-attempt-${{ github.run_attempt }}
           path: dist/GamerCatch-macOS-arm64.zip
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          overwrite: false
 
-  windows:
-    name: Package Windows x64
-    needs: verify-release-source
-    if: github.event_name == 'push'
-    runs-on: windows-latest
-    env:
-      # The owner does not yet have an Authenticode certificate. This makes
-      # the unsigned preview decision explicit instead of silently falling back.
-      ALLOW_UNSIGNED_WINDOWS: "1"
+  audit-release-candidates:
+    name: Audit reusable release candidates
+    needs: [verify-release-source, macos]
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, Node.js 24
         with:
+          ref: ${{ needs.verify-release-source.outputs.release_commit }}
           persist-credentials: false
 
       - name: Install Rust 1.88
@@ -303,34 +533,75 @@ jobs:
           rustup toolchain install 1.88.0 --profile minimal
           rustup default 1.88.0
 
-      - name: Build package
-        shell: pwsh
-        run: .\scripts\package-windows.ps1
+      - name: Require main has not moved
+        run: |
+          git fetch origin main --no-tags
+          test "$(git rev-parse origin/main)" = \
+            "${{ needs.verify-release-source.outputs.release_commit }}"
 
-      - name: Validate package
-        shell: pwsh
-        run: >-
-          .\target\release-packager\release\gamercatch-release-packager.exe
-          validate --platform windows dist\GamerCatch-Windows-x64.zip
+      - name: Download signed macOS candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1, Node.js 24
+        with:
+          artifact-ids: ${{ needs.macos.outputs.artifact_id }}
+          path: downloaded-candidates/macos
+          digest-mismatch: error
 
-      - name: Upload Windows assets
+      - name: Download tested Windows candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1, Node.js 24
+        with:
+          artifact-ids: ${{ needs.verify-release-source.outputs.ci_artifact_id }}
+          path: downloaded-candidates/windows
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.verify-release-source.outputs.ci_run_id }}
+          digest-mismatch: error
+
+      - name: Validate reusable candidates
+        run: |
+          CARGO_TARGET_DIR=target/release-packager \
+            cargo build --release --locked --package gamercatch-release-packager
+          packager=target/release-packager/release/gamercatch-release-packager
+          test "$(find downloaded-candidates/macos -type f | wc -l | tr -d ' ')" -eq 1
+          test "$(find downloaded-candidates/windows -type f | wc -l | tr -d ' ')" -eq 1
+          test -s downloaded-candidates/macos/GamerCatch-macOS-arm64.zip
+          test -s downloaded-candidates/windows/GamerCatch-Windows-x64.zip
+          mkdir candidate-assets
+          cp downloaded-candidates/macos/GamerCatch-macOS-arm64.zip candidate-assets/
+          cp downloaded-candidates/windows/GamerCatch-Windows-x64.zip candidate-assets/
+          "$packager" validate \
+            --platform macos \
+            candidate-assets/GamerCatch-macOS-arm64.zip
+          "$packager" validate \
+            --platform windows \
+            candidate-assets/GamerCatch-Windows-x64.zip
+          git fetch origin main --no-tags
+          test "$(git rev-parse origin/main)" = \
+            "${{ needs.verify-release-source.outputs.release_commit }}"
+
+      - name: Upload reusable release candidates
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1, Node.js 24
         with:
-          name: windows-assets
+          name: release-candidates-${{ needs.verify-release-source.outputs.release_commit }}-attempt-${{ github.run_attempt }}
+          path: candidate-assets/*.zip
           if-no-files-found: error
-          path: dist/GamerCatch-Windows-x64.zip
+          retention-days: 14
+          compression-level: 0
+          overwrite: false
 
   publish:
     name: Publish GitHub release
-    needs: [macos, windows]
+    needs: verify-release-source
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    environment: release
     permissions:
+      actions: read
       contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, Node.js 24
         with:
+          ref: ${{ needs.verify-release-source.outputs.release_commit }}
           persist-credentials: false
 
       - name: Install Rust 1.88
@@ -338,34 +609,27 @@ jobs:
           rustup toolchain install 1.88.0 --profile minimal
           rustup default 1.88.0
 
-      - name: Download packaged assets
+      - name: Download audited release candidates
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1, Node.js 24
         with:
-          path: release-assets
-          merge-multiple: true
-
-      - name: Collect release files
-        run: |
-          mkdir release-ready
-          while IFS='|' read -r source_filename release_filename
-          do
-            match_count="$(find release-assets -type f -name "$source_filename" -print | awk 'END { print NR }')"
-            if test "$match_count" -ne 1; then
-              echo "Expected exactly one $source_filename, found $match_count." >&2
-              exit 1
-            fi
-            source_path="$(find release-assets -type f -name "$source_filename" -print -quit)"
-            cp "$source_path" "release-ready/$release_filename"
-          done <<'FILES'
-          GamerCatch-macOS-arm64.zip|GamerCatch-macOS-arm64.zip
-          GamerCatch-Windows-x64.zip|GamerCatch-Windows-x64.zip
-          FILES
+          artifact-ids: ${{ needs.verify-release-source.outputs.candidate_artifact_id }}
+          path: release-ready
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.verify-release-source.outputs.candidate_run_id }}
+          digest-mismatch: error
 
       - name: Validate release assets
         run: |
+          git fetch origin main --no-tags
+          test "$(git rev-parse origin/main)" = \
+            "${{ needs.verify-release-source.outputs.release_commit }}"
           CARGO_TARGET_DIR=target/release-packager \
             cargo build --release --locked --package gamercatch-release-packager
           packager=target/release-packager/release/gamercatch-release-packager
+          test "$(find release-ready -type f | wc -l | tr -d ' ')" -eq 2
+          test -s release-ready/GamerCatch-macOS-arm64.zip
+          test -s release-ready/GamerCatch-Windows-x64.zip
           "$packager" validate \
             --platform macos \
             release-ready/GamerCatch-macOS-arm64.zip
@@ -381,7 +645,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release-ready/* \
+          git fetch origin main --no-tags
+          test "$(git rev-parse origin/main)" = \
+            "${{ needs.verify-release-source.outputs.release_commit }}"
+          gh release create "$GITHUB_REF_NAME" \
+            release-ready/GamerCatch-macOS-arm64.zip \
+            release-ready/GamerCatch-Windows-x64.zip \
+            release-ready/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --title "GamerCatch $GITHUB_REF_NAME（腳本版預覽）" \
             --notes-file "packaging/release-notes-$GITHUB_REF_NAME.md" \

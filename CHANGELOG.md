@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- 正式 tag 發布改為重用同一 commit SHA 已由 main CI 驗證的 Windows ZIP，以及簽章 smoke test 已完成 Developer ID 與 Apple 公證的 macOS ZIP；兩者會先合併成不可變 Release Candidate 並再次以 Rust 驗證，避免重複建置與重複公證。
+
 ## 0.2.3 - 2026-07-23
 
 - 下載頁移除 Angular Blob 與 Cloudflare 代理下載，改為直接連到官方 GitHub Release，由瀏覽器原生管理下載進度與安全檢查。

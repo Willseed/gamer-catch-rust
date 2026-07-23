@@ -70,13 +70,24 @@ gh workflow run release.yml --ref main
 gh run list --workflow release.yml --event workflow_dispatch --limit 1
 ```
 
-手動執行只會建立、簽署、公證、驗證並上傳 macOS 測試 artifact；Windows job 與 GitHub Release
-publish job 只允許由 `v*` tag 觸發，不會因 smoke test 發布版本。smoke test 必須成功後，才能建立
-正式 release commit 與 tag。
+手動執行會建立、簽署、公證並驗證 macOS 候選包，再從同一 commit SHA 的成功 main CI run 下載
+已驗證的 Windows 候選包。兩份 ZIP 會在 Linux runner 再次通過 Rust 驗證後，合併成名稱包含 SHA
+的不可變 Release Candidate artifact；不會因 smoke test 發布 GitHub Release。smoke test 必須成功後，
+才能建立正式 release tag。
+
+`v*` tag workflow 會要求 tag、目前 main、成功 main CI、成功 smoke run 與 Release Candidate 全部
+綁定同一 SHA，並拒絕過期、空白、缺少 SHA-256 digest 或來源 run 不符的 artifact。正式發布直接
+重用 smoke test 已驗證的兩份 ZIP，不會重新建立 Windows 套件，也不會再次簽署或送交 Apple 公證；
+發布前仍會重新執行 Rust 套件驗證並產生新的 `SHA256SUMS.txt`。publish job 保留 `release`
+environment 閘門，因此推送 tag 不會繞過既有的發行審批設定。
+
+同一 SHA 若有多次成功的 smoke run，tag workflow 會選擇建立時間最新的一次，並繼續以該 run 的
+成功 audit job attempt、artifact ID 與 digest 鎖定候選包。Windows、macOS 與合併候選 artifact
+均保留 14 天，因此正式 tag 必須在候選包到期前建立。
 
 ## 3. Release workflow 的安全界線
 
-macOS Release job 會依序：
+macOS Release Candidate job 會依序：
 
 1. 不注入任何 Apple secret，完成主程式、Rust 發行包工具、Playwright driver 與 staging 目錄建置。
 2. 將 `.p12` 與 `.p8` 解碼到 `$RUNNER_TEMP`，建立短效 temporary Keychain。
@@ -89,6 +100,11 @@ macOS Release job 會依序：
    log 的 `issues` 為 0，才會原子改名為正式 ZIP，避免失敗時留下看似可發佈的檔案。
 7. cleanup step 使用 `if: always()` 刪除 temporary Keychain、`.p12` 與 `.p8`，再執行套件驗證；GitHub-hosted
    runner 結束後，ephemeral VM 也會被銷毀。
+
+接著 audit job 只從 exact-SHA main CI 取得 Windows ZIP，下載同一次 smoke run 的 macOS ZIP，確認
+兩個 action artifact 的 digest，並以 Rust 驗證兩平台內容後上傳合併候選包。tag publish job 只下載
+這個成功 smoke run 的合併候選包；任何 run ID、head SHA、artifact 名稱、有效期限、大小或 digest
+不符都會 fail closed。
 
 Release workflow 不允許 `ALLOW_UNSIGNED_MACOS=1` 或 `ALLOW_UNNOTARIZED_MACOS=1`。
 

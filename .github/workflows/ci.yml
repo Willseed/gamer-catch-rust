@@ -527,6 +527,197 @@ jobs:
                  steps.fetch(upload_indexes.first) == expected_upload
             abort 'The Windows candidate upload must remain the exact next fail-closed step after package validation.'
           end
+
+          require 'digest'
+          require 'json'
+          release_workflow = YAML.load_file('.github/workflows/release.yml')
+          release_jobs = release_workflow.fetch('jobs')
+          canonicalize = lambda do |value|
+            case value
+            when Hash
+              value.keys.sort.each_with_object({}) do |key, result|
+                result[key] = canonicalize.call(value[key])
+              end
+            when Array
+              value.map { |item| canonicalize.call(item) }
+            else
+              value
+            end
+          end
+          expected_release_job_digests = {
+            'verify-release-source' => 'fb55bd5eaa5df2a14f060a0acf5fb70ca7d766067aff35c3e33c0c72e2b013f5',
+            'macos' => 'fe993360b7459a2153b04c53528ecdf0c1a0de9074c7345f51e8f768fd976818',
+            'audit-release-candidates' => '7be065af9c84c6fa0b760adf6cb7769f5bd3af695b78e7993064ae1f36cf5093',
+            'publish' => 'e78983bdd2590e44394fe5c0a2cd292c5dc10a6ecdaa1ce8c95575a19d8ac7ef'
+          }
+          actual_release_job_digests = release_jobs.to_h do |job_name, job|
+            canonical_job = JSON.generate(canonicalize.call(job))
+            [job_name, Digest::SHA256.hexdigest(canonical_job)]
+          end
+          unless actual_release_job_digests == expected_release_job_digests
+            abort <<~MESSAGE
+              Every release job command, action, input, dependency, permission, and runner must remain on the reviewed allowlist.
+              Expected: #{expected_release_job_digests}
+              Actual:   #{actual_release_job_digests}
+            MESSAGE
+          end
+
+          verify_job = release_jobs.fetch('verify-release-source')
+          audit_job = release_jobs.fetch('audit-release-candidates')
+          publish_job = release_jobs.fetch('publish')
+          github_expression = lambda { |body| "#{expression} #{body} }}" }
+          unique_step = lambda do |job, name|
+            job_steps = job.fetch('steps')
+            indexes = job_steps.each_index.select { |index| job_steps[index]['name'] == name }
+            abort "Expected exactly one release step named #{name}." unless indexes.length == 1
+            [indexes.first, job_steps.fetch(indexes.first)]
+          end
+
+          release_build_index, release_build = unique_step.call(
+            verify_job,
+            'Build Linux release packager'
+          )
+          source_index, source_step = unique_step.call(verify_job, 'Require tested main source')
+          release_upload_index, release_upload = unique_step.call(
+            verify_job,
+            'Upload Linux release packager'
+          )
+          artifact_id_index, artifact_id_step = unique_step.call(
+            verify_job,
+            'Require Linux release packager artifact ID'
+          )
+          expected_release_build = {
+            'name' => 'Build Linux release packager',
+            'run' => <<~'SHELL'
+              CARGO_TARGET_DIR=target/release-packager \
+                cargo build --release --locked --package gamercatch-release-packager
+              test -x target/release-packager/release/gamercatch-release-packager
+            SHELL
+          }
+          expected_release_upload = {
+            'name' => 'Upload Linux release packager',
+            'id' => 'upload_release_packager',
+            'uses' => 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a',
+            'with' => {
+              'name' => "linux-release-packager-#{github_expression.call('steps.source.outputs.release_commit')}-attempt-#{github_expression.call('github.run_attempt')}",
+              'path' => 'target/release-packager/release/gamercatch-release-packager',
+              'if-no-files-found' => 'error',
+              'retention-days' => 14,
+              'compression-level' => 0,
+              'overwrite' => false
+            }
+          }
+          expected_artifact_id_step = {
+            'name' => 'Require Linux release packager artifact ID',
+            'env' => {
+              'ARTIFACT_ID' => github_expression.call(
+                'steps.upload_release_packager.outputs.artifact-id'
+              )
+            },
+            'run' => <<~'SHELL'
+              case "$ARTIFACT_ID" in
+                '' | *[!0-9]*)
+                  echo "Linux release packager upload did not return a numeric artifact ID." >&2
+                  exit 1
+                  ;;
+              esac
+              test "$ARTIFACT_ID" -gt 0
+            SHELL
+          }
+          expected_packager_output = github_expression.call(
+            'steps.upload_release_packager.outputs.artifact-id'
+          )
+          unless release_build == expected_release_build &&
+                 release_upload == expected_release_upload &&
+                 artifact_id_step == expected_artifact_id_step &&
+                 source_index == release_build_index + 1 &&
+                 release_upload_index == source_index + 1 &&
+                 artifact_id_index == release_upload_index + 1 &&
+                 verify_job.fetch('outputs').fetch('release_packager_artifact_id') == expected_packager_output
+            abort 'The Linux release packager must be built once, uploaded after source gates, and expose its immutable artifact ID.'
+          end
+
+          source_run = source_step.fetch('run')
+          [
+            'packager=target/release-packager/release/gamercatch-release-packager',
+            '"$packager" package-version Cargo.toml',
+            '"$packager" verify-versions'
+          ].each do |marker|
+            abort "The release source gate must use the reusable packager: #{marker}" unless source_run.include?(marker)
+          end
+          release_runs = release_jobs.values.flat_map do |job|
+            job.fetch('steps', []).filter_map { |step| step['run'] }
+          end
+          build_command = 'cargo build --release --locked --package gamercatch-release-packager'
+          unless release_runs.sum { |run| run.scan(build_command).length } == 1 &&
+                 release_runs.none? { |run| run.include?('cargo run') }
+            abort 'Release must build the Linux packager exactly once and never invoke cargo run.'
+          end
+          install_jobs = release_jobs.filter_map do |job_name, job|
+            job_name if job.fetch('steps', []).any? { |step| step['name'] == 'Install Rust 1.88' }
+          end
+          unless install_jobs.sort == %w[macos verify-release-source]
+            abort 'Only the producer and native macOS package job may install Rust in release.yml.'
+          end
+
+          expected_download = {
+            'name' => 'Download Linux release packager',
+            'uses' => 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c',
+            'with' => {
+              'artifact-ids' => github_expression.call(
+                'needs.verify-release-source.outputs.release_packager_artifact_id'
+              ),
+              'path' => "#{github_expression.call('runner.temp')}/linux-release-packager",
+              'digest-mismatch' => 'error'
+            }
+          }
+          consumers = {
+            'audit-release-candidates' => 'Validate reusable candidates',
+            'publish' => 'Validate release assets'
+          }
+          unless audit_job.fetch('needs') == %w[verify-release-source macos] &&
+                 publish_job.fetch('needs') == 'verify-release-source'
+            abort 'Release consumers must depend directly on the Linux packager producer.'
+          end
+          consumers.each do |job_name, validation_name|
+            job = release_jobs.fetch(job_name)
+            download_index, download_step = unique_step.call(
+              job,
+              'Download Linux release packager'
+            )
+            validation_index, validation_step = unique_step.call(job, validation_name)
+            validation_run = validation_step.fetch('run')
+            required_validation_markers = [
+              'tool_dir="$RUNNER_TEMP/linux-release-packager"',
+              'packager="$tool_dir/gamercatch-release-packager"',
+              %q{test "$(find "$tool_dir" -mindepth 1 -print | wc -l | tr -d ' ')" -eq 1},
+              'test -f "$packager"',
+              'test ! -L "$packager"',
+              'test -s "$packager"',
+              'chmod 0755 "$packager"',
+              'test -x "$packager"',
+              '"$packager" validate'
+            ]
+            consumer_runs = job.fetch('steps').filter_map { |step| step['run'] }
+            forbidden_runtime = consumer_runs.any? do |run|
+              run.match?(/\b(?:cargo|rustup)\b/) ||
+                run.include?('CARGO_TARGET_DIR') ||
+                run.include?('target/release-packager')
+            end
+            validation_marker_indexes = required_validation_markers.map do |marker|
+              validation_run.index(marker)
+            end
+            unless download_step == expected_download &&
+                   download_index < validation_index &&
+                   validation_marker_indexes.none?(&:nil?) &&
+                   validation_marker_indexes == validation_marker_indexes.sort &&
+                   !forbidden_runtime
+              abort "#{job_name} must download, allowlist, chmod, and use the immutable Linux packager without Rust."
+            end
+            if job_name == 'publish' && !validation_run.include?('"$packager" checksums')
+              abort 'Publish must create checksums with the reusable Linux packager.'
+            end
+          end
           RUBY
           for marker in \
             'candidate_run_id' \

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - 正式 tag 發布改為重用同一 commit SHA 已由 main CI 驗證的 Windows ZIP，以及簽章 smoke test 已完成 Developer ID 與 Apple 公證的 macOS ZIP；兩者會先合併成不可變 Release Candidate 並再次以 Rust 驗證，避免重複建置與重複公證。
+- 每次 Release workflow 只在來源驗證 job 建置一次 Linux Rust 打包器，再以不可變 artifact ID 交給 audit 與 publish job 執行 ZIP 驗證及 checksum，移除重複 Rust 安裝與 release build。
 
 ## 0.2.3 - 2026-07-23
 

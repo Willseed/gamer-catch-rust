@@ -161,6 +161,10 @@ Authenticode 憑證；目前未設定 Windows 簽章時，只能明確使用 `AL
 SHA 的成功 CI／smoke run 與未過期、具 SHA-256 digest 的 artifact，再重新驗證並發布完全相同的
 位元組。
 
+同一次 Release workflow 只會建立一份 Linux `gamercatch-release-packager`。來源與版本檢核成功後，
+audit／publish job 依不可變 artifact ID 取得同一支工具來驗證 ZIP 與產生 checksum，不會各自重新安裝
+Rust 或重複編譯。
+
 ## 開發驗證
 
 ```bash

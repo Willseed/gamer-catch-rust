@@ -22,6 +22,7 @@ jobs:
       ci_artifact_id: ${{ steps.source.outputs.ci_artifact_id }}
       candidate_run_id: ${{ steps.source.outputs.candidate_run_id }}
       candidate_artifact_id: ${{ steps.source.outputs.candidate_artifact_id }}
+      release_packager_artifact_id: ${{ steps.upload_release_packager.outputs.artifact-id }}
     permissions:
       actions: read
       contents: read
@@ -37,12 +38,27 @@ jobs:
           rustup toolchain install 1.88.0 --profile minimal
           rustup default 1.88.0
 
+      - name: Build Linux release packager
+        run: |
+          CARGO_TARGET_DIR=target/release-packager \
+            cargo build --release --locked --package gamercatch-release-packager
+          test -x target/release-packager/release/gamercatch-release-packager
+
       - name: Require tested main source
         id: source
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          packager=target/release-packager/release/gamercatch-release-packager
+          test -x "$packager"
+          package_version="$("$packager" package-version Cargo.toml)"
+          "$packager" verify-versions \
+            --expected "$package_version" \
+            Cargo.toml \
+            tools/release-packager/Cargo.toml \
+            web/package.json \
+            web/package-lock.json
 
           require_run() {
             local run_id="$1"
@@ -176,23 +192,10 @@ jobs:
               exit 1
             fi
 
-            package_version="$(
-              cargo run --quiet --locked \
-                --package gamercatch-release-packager -- \
-                package-version Cargo.toml
-            )"
             if test "$GITHUB_REF_NAME" != "v$package_version"; then
               echo "Tag $GITHUB_REF_NAME does not match Cargo version $package_version." >&2
               exit 1
             fi
-            cargo run --quiet --locked \
-              --package gamercatch-release-packager -- \
-              verify-versions \
-              --expected "$package_version" \
-              Cargo.toml \
-              tools/release-packager/Cargo.toml \
-              web/package.json \
-              web/package-lock.json
             if test ! -f "packaging/release-notes-$GITHUB_REF_NAME.md"; then
               echo "Missing release notes for $GITHUB_REF_NAME." >&2
               exit 1
@@ -242,19 +245,6 @@ jobs:
               echo "Signing smoke tests must run from the current main HEAD." >&2
               exit 1
             fi
-            package_version="$(
-              cargo run --quiet --locked \
-                --package gamercatch-release-packager -- \
-                package-version Cargo.toml
-            )"
-            cargo run --quiet --locked \
-              --package gamercatch-release-packager -- \
-              verify-versions \
-              --expected "$package_version" \
-              Cargo.toml \
-              tools/release-packager/Cargo.toml \
-              web/package.json \
-              web/package-lock.json
             if test ! -f "packaging/release-notes-v$package_version.md"; then
               echo "Missing release notes for v$package_version." >&2
               exit 1
@@ -331,6 +321,29 @@ jobs:
             echo "candidate_run_id=$candidate_run_id"
             echo "candidate_artifact_id=$candidate_artifact_id"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Upload Linux release packager
+        id: upload_release_packager
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1, Node.js 24
+        with:
+          name: linux-release-packager-${{ steps.source.outputs.release_commit }}-attempt-${{ github.run_attempt }}
+          path: target/release-packager/release/gamercatch-release-packager
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          overwrite: false
+
+      - name: Require Linux release packager artifact ID
+        env:
+          ARTIFACT_ID: ${{ steps.upload_release_packager.outputs.artifact-id }}
+        run: |
+          case "$ARTIFACT_ID" in
+            '' | *[!0-9]*)
+              echo "Linux release packager upload did not return a numeric artifact ID." >&2
+              exit 1
+              ;;
+          esac
+          test "$ARTIFACT_ID" -gt 0
 
   macos:
     name: Prepare signed macOS release candidate
@@ -528,16 +541,18 @@ jobs:
           ref: ${{ needs.verify-release-source.outputs.release_commit }}
           persist-credentials: false
 
-      - name: Install Rust 1.88
-        run: |
-          rustup toolchain install 1.88.0 --profile minimal
-          rustup default 1.88.0
-
       - name: Require main has not moved
         run: |
           git fetch origin main --no-tags
           test "$(git rev-parse origin/main)" = \
             "${{ needs.verify-release-source.outputs.release_commit }}"
+
+      - name: Download Linux release packager
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1, Node.js 24
+        with:
+          artifact-ids: ${{ needs.verify-release-source.outputs.release_packager_artifact_id }}
+          path: ${{ runner.temp }}/linux-release-packager
+          digest-mismatch: error
 
       - name: Download signed macOS candidate
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1, Node.js 24
@@ -558,9 +573,14 @@ jobs:
 
       - name: Validate reusable candidates
         run: |
-          CARGO_TARGET_DIR=target/release-packager \
-            cargo build --release --locked --package gamercatch-release-packager
-          packager=target/release-packager/release/gamercatch-release-packager
+          tool_dir="$RUNNER_TEMP/linux-release-packager"
+          packager="$tool_dir/gamercatch-release-packager"
+          test "$(find "$tool_dir" -mindepth 1 -print | wc -l | tr -d ' ')" -eq 1
+          test -f "$packager"
+          test ! -L "$packager"
+          test -s "$packager"
+          chmod 0755 "$packager"
+          test -x "$packager"
           test "$(find downloaded-candidates/macos -type f | wc -l | tr -d ' ')" -eq 1
           test "$(find downloaded-candidates/windows -type f | wc -l | tr -d ' ')" -eq 1
           test -s downloaded-candidates/macos/GamerCatch-macOS-arm64.zip
@@ -604,10 +624,12 @@ jobs:
           ref: ${{ needs.verify-release-source.outputs.release_commit }}
           persist-credentials: false
 
-      - name: Install Rust 1.88
-        run: |
-          rustup toolchain install 1.88.0 --profile minimal
-          rustup default 1.88.0
+      - name: Download Linux release packager
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1, Node.js 24
+        with:
+          artifact-ids: ${{ needs.verify-release-source.outputs.release_packager_artifact_id }}
+          path: ${{ runner.temp }}/linux-release-packager
+          digest-mismatch: error
 
       - name: Download audited release candidates
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1, Node.js 24
@@ -621,12 +643,17 @@ jobs:
 
       - name: Validate release assets
         run: |
+          tool_dir="$RUNNER_TEMP/linux-release-packager"
+          packager="$tool_dir/gamercatch-release-packager"
+          test "$(find "$tool_dir" -mindepth 1 -print | wc -l | tr -d ' ')" -eq 1
+          test -f "$packager"
+          test ! -L "$packager"
+          test -s "$packager"
+          chmod 0755 "$packager"
+          test -x "$packager"
           git fetch origin main --no-tags
           test "$(git rev-parse origin/main)" = \
             "${{ needs.verify-release-source.outputs.release_commit }}"
-          CARGO_TARGET_DIR=target/release-packager \
-            cargo build --release --locked --package gamercatch-release-packager
-          packager=target/release-packager/release/gamercatch-release-packager
           test "$(find release-ready -type f | wc -l | tr -d ' ')" -eq 2
           test -s release-ready/GamerCatch-macOS-arm64.zip
           test -s release-ready/GamerCatch-Windows-x64.zip

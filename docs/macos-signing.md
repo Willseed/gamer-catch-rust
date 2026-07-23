@@ -102,9 +102,11 @@ macOS Release Candidate job 會依序：
    runner 結束後，ephemeral VM 也會被銷毀。
 
 接著 audit job 只從 exact-SHA main CI 取得 Windows ZIP，下載同一次 smoke run 的 macOS ZIP，確認
-兩個 action artifact 的 digest，並以 Rust 驗證兩平台內容後上傳合併候選包。tag publish job 只下載
-這個成功 smoke run 的合併候選包；任何 run ID、head SHA、artifact 名稱、有效期限、大小或 digest
-不符都會 fail closed。
+兩個 action artifact 的 digest，並以 Rust 驗證兩平台內容後上傳合併候選包。Linux
+`gamercatch-release-packager` 只在來源驗證 job 建置一次；audit 與 publish 都以同一次 workflow 的
+artifact ID 下載、核對 digest、檢查唯一檔案並恢復執行權限，不再安裝 Rust 或重新編譯。tag publish
+job 只下載這個成功 smoke run 的合併候選包；任何 run ID、head SHA、artifact 名稱、有效期限、大小
+或 digest 不符都會 fail closed。
 
 Release workflow 不允許 `ALLOW_UNSIGNED_MACOS=1` 或 `ALLOW_UNNOTARIZED_MACOS=1`。
 

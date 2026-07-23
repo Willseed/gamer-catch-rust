@@ -78,14 +78,15 @@ publish job 只允許由 `v*` tag 觸發，不會因 smoke test 發布版本。s
 
 macOS Release job 會依序：
 
-1. 不注入任何 Apple secret，完成 Rust、Playwright driver 與 staging 目錄建置。
+1. 不注入任何 Apple secret，完成主程式、Rust 發行包工具、Playwright driver 與 staging 目錄建置。
 2. 將 `.p12` 與 `.p8` 解碼到 `$RUNNER_TEMP`，建立短效 temporary Keychain。
 3. 以不可匯出的方式匯入 private key，只授權 Apple signing tools／`codesign` 使用。
 4. 要求 temporary Keychain 中正好有一張 Developer ID Application identity。
 5. 簽署 `playwright-driver/node` 與 `GamerCatch`，逐一驗證 Developer ID authority、hardened
    runtime、secure timestamp 與 Team ID；發現額外 Mach-O 時會停止。
-6. 先建立 `.pending.zip`，再以 App Store Connect API key 執行 `notarytool submit --wait`；只有
-   `Accepted` 且 notarization log 的 `issues` 為 0，才會原子改名為正式 ZIP，避免失敗時留下看似可發佈的檔案。
+6. 由 Rust 工具建立並驗證 `.pending.zip`，再以 App Store Connect API key 執行
+   `notarytool submit --wait`；公證 JSON 同樣由 Rust 嚴格解析，只有 `Accepted` 且 notarization
+   log 的 `issues` 為 0，才會原子改名為正式 ZIP，避免失敗時留下看似可發佈的檔案。
 7. cleanup step 使用 `if: always()` 刪除 temporary Keychain、`.p12` 與 `.p8`，再執行套件驗證；GitHub-hosted
    runner 結束後，ephemeral VM 也會被銷毀。
 

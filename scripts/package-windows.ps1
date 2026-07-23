@@ -50,6 +50,8 @@ switch ($RustHost) {
 }
 
 $BuildTargetDir = Join-Path $ProjectDir "target\package-windows-$PackageArch"
+$PackagerTargetDir = Join-Path $ProjectDir "target\release-packager"
+$PackagerExe = Join-Path $PackagerTargetDir "release\gamercatch-release-packager.exe"
 $OutputDir = Join-Path $ProjectDir "dist\GamerCatch-Windows-$PackageArch"
 $OutputZip = Join-Path $ProjectDir "dist\GamerCatch-Windows-$PackageArch.zip"
 
@@ -88,6 +90,17 @@ foreach ($Name in $EnvironmentNames) {
 
 Push-Location $ProjectDir
 try {
+    $env:CARGO_TARGET_DIR = $PackagerTargetDir
+    Remove-Item -LiteralPath "Env:CARGO_ENCODED_RUSTFLAGS" -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath "Env:RUSTFLAGS" -ErrorAction SilentlyContinue
+    & cargo build --release --locked --package gamercatch-release-packager
+    if ($LASTEXITCODE -ne 0) {
+        throw "The Rust release packager build failed with exit code $LASTEXITCODE."
+    }
+    if (-not (Test-Path -LiteralPath $PackagerExe -PathType Leaf)) {
+        throw "The Rust release packager was not created: $PackagerExe"
+    }
+
     $env:PLAYWRIGHT_DRIVER_CACHE_DIR = $DriverCache
     $env:CARGO_TARGET_DIR = $BuildTargetDir
     $env:CARGO_ENCODED_RUSTFLAGS = $PackageRustFlags
@@ -202,12 +215,16 @@ if ($ArtifactDlib -and $ArtifactMetadata -or $CertificateSha1) {
     }
 }
 
-& python (Join-Path $ProjectDir "scripts\create-release-zip.py") $OutputDir $OutputZip
+& $PackagerExe create-zip $OutputDir $OutputZip
 if ($LASTEXITCODE -ne 0) {
     throw "Windows ZIP creation failed with exit code $LASTEXITCODE."
 }
 if (-not (Test-Path -LiteralPath $OutputZip -PathType Leaf)) {
     throw "Windows ZIP creation failed: $OutputZip"
+}
+& $PackagerExe validate --platform windows $OutputZip
+if ($LASTEXITCODE -ne 0) {
+    throw "Windows ZIP validation failed with exit code $LASTEXITCODE."
 }
 
 Write-Host "Windows package created: $OutputZip"

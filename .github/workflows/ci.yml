@@ -368,7 +368,8 @@ jobs:
           ALLOW_UNSIGNED_WINDOWS: "1"
         run: |
           .\scripts\package-windows.ps1
-          python scripts\validate-package.py --platform windows dist\GamerCatch-Windows-x64.zip
+          .\target\release-packager\release\gamercatch-release-packager.exe `
+            validate --platform windows dist\GamerCatch-Windows-x64.zip
 
   web:
     name: Angular 22 (Node.js 24)
@@ -411,7 +412,36 @@ jobs:
         run: |
           bash -n scripts/package-macos.sh scripts/*.command scripts/*.sh
           shellcheck scripts/package-macos.sh scripts/*.command scripts/*.sh
-          python3 -m py_compile scripts/create-release-zip.py scripts/validate-package.py
+
+      - name: Require Rust-only release packaging
+        run: |
+          tracked_python="$(git ls-files '*.py')"
+          if test -n "$tracked_python"; then
+            echo 'Release packaging must not depend on tracked Python files.' >&2
+            printf '%s\n' "$tracked_python" >&2
+            exit 1
+          fi
+          if git grep -En '(^|[[:space:]])python(3)?([[:space:]]|$)' -- \
+            scripts/package-macos.sh \
+            scripts/package-windows.ps1 \
+            .github/workflows/release.yml
+          then
+            echo 'Release packaging must invoke the Rust packager instead of Python.' >&2
+            exit 1
+          fi
+          for marker in \
+            'gamercatch-release-packager' \
+            'create-zip' \
+            'validate --platform' \
+            'notary-submission' \
+            'notary-issue-count' \
+            'checksums'
+          do
+            git grep -F "$marker" -- \
+              scripts/package-macos.sh \
+              scripts/package-windows.ps1 \
+              .github/workflows/release.yml >/dev/null
+          done
 
       - name: Require signed and notarized macOS releases
         run: |
@@ -444,13 +474,15 @@ jobs:
             'flags=.*\(runtime\)' \
             'Timestamp=' \
             'PENDING_ZIP=' \
-            'uuid.UUID(submission_id)' \
+            'notary-submission' \
+            'notary-issue-count' \
             'submit_for_notarization' \
             'mv --' \
             'Apple notarization Accepted，log issues=0'
           do
             grep -F "$marker" scripts/package-macos.sh >/dev/null
           done
+          grep -F 'is_uuid' tools/release-packager/src/notary.rs >/dev/null
 
       - name: Protect user config in macOS launchers
         run: |

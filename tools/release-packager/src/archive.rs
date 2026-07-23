@@ -205,6 +205,10 @@ pub(crate) fn validate_entry_name(name: &str) -> Result<()> {
         !name.contains('\0') && !name.contains('\\') && !name.chars().any(char::is_control),
         "ZIP 項目名稱含不安全字元：{name:?}"
     );
+    ensure!(
+        !name.chars().any(is_non_ascii_case_varying),
+        "ZIP 項目名稱不可包含跨平台大小寫規則不一致的字元：{name:?}"
+    );
     ensure!(!name.starts_with('/'), "ZIP 項目不可使用絕對路徑：{name}");
     let without_trailing_slash = name.strip_suffix('/').unwrap_or(name);
     let parts = without_trailing_slash.split('/').collect::<Vec<_>>();
@@ -253,19 +257,16 @@ pub(crate) fn scan_zip(archive: &mut ZipArchive<File>) -> Result<Vec<ScannedZipE
         let is_directory = entry.is_dir();
         validate_entry_type(&entry, &name, is_directory)?;
         paths.insert(&name, is_directory)?;
-        if !is_directory {
-            ensure!(entry.size() <= MAX_ENTRY_SIZE, "ZIP 項目解壓後過大：{name}");
-            total_size = total_size
-                .checked_add(entry.size())
-                .context("ZIP 解壓總大小溢位")?;
-            ensure!(total_size <= MAX_ARCHIVE_SIZE, "ZIP 解壓總大小超過安全上限");
-            io::copy(&mut entry, &mut io::sink())
-                .with_context(|| format!("ZIP CRC 驗證失敗：{name}"))?;
-        }
+        let unix_mode = entry.unix_mode();
+        let actual_size = read_and_measure(&mut entry, &name, is_directory)?;
+        total_size = total_size
+            .checked_add(actual_size)
+            .context("ZIP 解壓總大小溢位")?;
+        ensure!(total_size <= MAX_ARCHIVE_SIZE, "ZIP 解壓總大小超過安全上限");
         entries.push(ScannedZipEntry {
             name,
             is_directory,
-            unix_mode: entry.unix_mode(),
+            unix_mode,
         });
     }
     Ok(entries)
@@ -279,7 +280,10 @@ fn validate_entry_type<R: Read>(
     ensure!(!entry.encrypted(), "ZIP 項目不可加密：{name}");
     ensure!(!entry.is_symlink(), "ZIP 項目不可為符號連結：{name}");
     if is_directory {
-        ensure!(entry.size() == 0, "ZIP 資料夾項目不可包含資料：{name}");
+        ensure!(
+            entry.size() == 0 && entry.compressed_size() == 0,
+            "ZIP 資料夾項目不可包含資料：{name}"
+        );
     }
     let Some(mode) = entry.unix_mode() else {
         return Ok(());
@@ -295,6 +299,36 @@ fn validate_entry_type<R: Read>(
         "ZIP 項目使用不支援的檔案類型：{name}"
     );
     Ok(())
+}
+
+fn read_and_measure<R: Read>(
+    entry: &mut zip::read::ZipFile<'_, R>,
+    name: &str,
+    is_directory: bool,
+) -> Result<u64> {
+    let declared_size = entry.size();
+    ensure!(
+        declared_size <= MAX_ENTRY_SIZE,
+        "ZIP 項目宣告的解壓大小過大：{name}"
+    );
+    let size_limit = if is_directory { 1 } else { MAX_ENTRY_SIZE + 1 };
+    let actual_size = io::copy(&mut entry.take(size_limit), &mut io::sink())
+        .with_context(|| format!("ZIP CRC 驗證失敗：{name}"))?;
+    ensure!(
+        actual_size == declared_size,
+        "ZIP 項目的實際與宣告大小不符：{name}"
+    );
+    ensure!(
+        !is_directory || actual_size == 0,
+        "ZIP 資料夾項目不可包含資料：{name}"
+    );
+    Ok(actual_size)
+}
+
+fn is_non_ascii_case_varying(character: char) -> bool {
+    !character.is_ascii()
+        && character.to_lowercase().collect::<String>()
+            != character.to_uppercase().collect::<String>()
 }
 
 fn is_windows_reserved_name(part: &str) -> bool {
@@ -469,6 +503,8 @@ mod tests {
             "root/LPT9",
             "root/question?.txt",
             "root/trailing. ",
+            "root/σ.txt",
+            "root/ς.txt",
         ] {
             assert!(validate_entry_name(name).is_err(), "accepted {name}");
         }

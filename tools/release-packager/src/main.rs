@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use gamercatch_release_packager::archive::create_release_zip;
+use gamercatch_release_packager::checksum::write_sha256sums;
 use gamercatch_release_packager::manifest::package_version;
 use gamercatch_release_packager::notary::{parse_issue_count, parse_submission};
 use gamercatch_release_packager::validation::{Platform, validate_package};
@@ -34,6 +35,13 @@ enum Command {
     NotaryIssueCount,
     /// 讀取 Cargo manifest 的 package.version
     PackageVersion { manifest_path: PathBuf },
+    /// 依傳入順序建立 SHA256SUMS.txt
+    Checksums {
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(required = true)]
+        files: Vec<PathBuf>,
+    },
 }
 
 fn main() {
@@ -67,6 +75,10 @@ fn run() -> Result<()> {
         }
         Command::PackageVersion { manifest_path } => {
             println!("{}", package_version(&manifest_path)?);
+        }
+        Command::Checksums { output, files } => {
+            write_sha256sums(&files, &output)?;
+            println!("{}", output.display());
         }
     }
     Ok(())

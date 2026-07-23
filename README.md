@@ -142,6 +142,10 @@ Windows PowerShell：
 .\scripts\package-windows.ps1
 ```
 
+兩個平台的 ZIP 建立、內容驗證、公證 JSON 檢核與 checksum 都由 workspace 內的 Rust
+`gamercatch-release-packager` 執行，不需要安裝 Python。macOS 的 `codesign`／`notarytool` 與
+Windows 的 `signtool` 仍由各平台原生工具負責信任鏈作業。
+
 發行 ZIP 只包含安全範例設定、雙擊腳本、Playwright driver、Node 與 `使用說明.txt`；不包含 PDF 或任何真實憑證。Chromium 由第一次設定腳本安裝到使用者快取。
 
 macOS 正式 Release 採 fail-closed：必須使用 `Developer ID Application` 簽署所有 Mach-O，並取得
@@ -156,9 +160,9 @@ Authenticode 憑證；目前未設定 Windows 簽章時，只能明確使用 `AL
 
 ```bash
 cargo fmt --all -- --check
-cargo check --locked --all-targets
-cargo test --locked --all-targets
-cargo clippy --locked --all-targets -- -D warnings
+cargo check --locked --workspace --all-targets
+cargo test --locked --workspace --all-targets
+cargo clippy --locked --workspace --all-targets -- -D warnings
 cd web && npm ci && npm run test:ci && npm run build:cloudflare
 ```
 

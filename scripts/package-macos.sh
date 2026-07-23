@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DRIVER_CACHE="$PROJECT_DIR/target/playwright-driver-cache"
+PACKAGER_TARGET_DIR="$PROJECT_DIR/target/release-packager"
+PACKAGER_BIN="$PACKAGER_TARGET_DIR/release/gamercatch-release-packager"
 CARGO_HOME_DIR="${CARGO_HOME:-$HOME/.cargo}"
 RUSTFLAG_SEPARATOR=$'\x1f'
 PACKAGE_RUSTFLAGS="--remap-path-prefix=$PROJECT_DIR=/workspace${RUSTFLAG_SEPARATOR}--remap-path-prefix=$CARGO_HOME_DIR=/cargo"
@@ -172,19 +174,7 @@ submit_for_notarization() {
     exit 1
   fi
   if ! parsed_result="$(
-    printf '%s' "$notary_result" | python3 -c \
-      'import json, sys, uuid
-data = json.load(sys.stdin)
-if not isinstance(data, dict):
-    raise ValueError("response must be an object")
-status = data.get("status")
-submission_id = data.get("id")
-if not isinstance(status, str) or not status or any(char in status for char in "\t\r\n"):
-    raise ValueError("status must be a non-empty string")
-if not isinstance(submission_id, str):
-    raise ValueError("id must be a UUID string")
-uuid.UUID(submission_id)
-print(f"{status}\t{submission_id}")'
+    printf '%s' "$notary_result" | "$PACKAGER_BIN" notary-submission
   )"; then
     echo "無法解析 Apple notarization JSON 回覆。" >&2
     printf '%s\n' "$notary_result" >&2
@@ -203,19 +193,7 @@ print(f"{status}\t{submission_id}")'
     exit 1
   fi
   if ! issue_count="$(
-    printf '%s' "$notary_log" | python3 -c \
-      'import json, sys
-data = json.load(sys.stdin)
-if not isinstance(data, dict):
-    raise ValueError("log must be an object")
-if "issues" not in data:
-    raise ValueError("log must contain issues")
-issues = data.get("issues")
-if issues is None:
-    issues = []
-if not isinstance(issues, list):
-    raise ValueError("issues must be an array")
-print(len(issues))'
+    printf '%s' "$notary_log" | "$PACKAGER_BIN" notary-issue-count
   )"; then
     echo "無法解析 Apple notarization log：$submission_id" >&2
     printf '%s\n' "$notary_log" >&2
@@ -232,6 +210,12 @@ print(len(issues))'
 
 if [[ "$PACKAGE_PHASE" != "finalize" ]]; then
   cd "$PROJECT_DIR"
+  env \
+    -u CARGO_ENCODED_RUSTFLAGS \
+    -u RUSTFLAGS \
+    CARGO_TARGET_DIR="$PACKAGER_TARGET_DIR" \
+    cargo build --release --locked --package gamercatch-release-packager
+
   env -u PLAYWRIGHT_SKIP_DRIVER_DOWNLOAD \
     -u PLAYWRIGHT_NODE_EXE \
     -u PLAYWRIGHT_CLI_JS \
@@ -295,6 +279,11 @@ if [[ "$PACKAGE_PHASE" != "finalize" ]]; then
   fi
 fi
 
+if [[ ! -x "$PACKAGER_BIN" ]]; then
+  echo "找不到 Rust 發行包工具：$PACKAGER_BIN" >&2
+  exit 1
+fi
+
 MACHO_PATHS=()
 while IFS= read -r -d '' candidate; do
   if LC_ALL=C file -b "$candidate" | grep -F 'Mach-O' >/dev/null; then
@@ -337,7 +326,8 @@ else
   echo "預覽版狀態：已明確允許建立未簽章 macOS 版本。"
 fi
 
-python3 "$PROJECT_DIR/scripts/create-release-zip.py" "$OUTPUT_DIR" "$PENDING_ZIP"
+"$PACKAGER_BIN" create-zip "$OUTPUT_DIR" "$PENDING_ZIP"
+"$PACKAGER_BIN" validate --platform macos "$PENDING_ZIP"
 
 if [[ -n "$NOTARY_PROFILE" || "$DIRECT_NOTARY_CONFIGURED" -eq 1 ]]; then
   submit_for_notarization "$PENDING_ZIP"

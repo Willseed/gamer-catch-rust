@@ -3,6 +3,7 @@
 ## Unreleased
 
 - 下載頁移除 Angular Blob 與 Cloudflare 代理下載，改為直接連到官方 GitHub Release，由瀏覽器原生管理下載進度與安全檢查。
+- 發行包建立、跨平台內容驗證、Apple 公證 JSON 檢核與 SHA-256 清單全面改用 Rust，移除打包與發布流程的 Python 檔案及執行依賴。
 
 ## 0.2.2 - 2026-07-23
 

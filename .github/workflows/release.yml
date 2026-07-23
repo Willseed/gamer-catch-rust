@@ -54,6 +54,14 @@ jobs:
               echo "Tag $GITHUB_REF_NAME does not match Cargo version $package_version." >&2
               exit 1
             fi
+            cargo run --quiet --locked \
+              --package gamercatch-release-packager -- \
+              verify-versions \
+              --expected "$package_version" \
+              Cargo.toml \
+              tools/release-packager/Cargo.toml \
+              web/package.json \
+              web/package-lock.json
             if test ! -f "packaging/release-notes-$GITHUB_REF_NAME.md"; then
               echo "Missing release notes for $GITHUB_REF_NAME." >&2
               exit 1

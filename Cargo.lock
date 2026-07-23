@@ -551,7 +551,7 @@ dependencies = [
 
 [[package]]
 name = "gamer-catch-rust"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "apple-native-keyring-store",
@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "gamercatch-release-packager"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "clap",

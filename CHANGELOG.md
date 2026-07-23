@@ -2,8 +2,12 @@
 
 ## Unreleased
 
+## 0.2.3 - 2026-07-23
+
 - 下載頁移除 Angular Blob 與 Cloudflare 代理下載，改為直接連到官方 GitHub Release，由瀏覽器原生管理下載進度與安全檢查。
 - 發行包建立、跨平台內容驗證、Apple 公證 JSON 檢核與 SHA-256 清單全面改用 Rust，移除打包與發布流程的 Python 檔案及執行依賴。
+- 新增可重現 ZIP、UTF-8 與 Unix 權限保留、CRC、實際解壓大小、單一根目錄、路徑碰撞、符號連結、秘密檔案及平台啟動腳本等 fail-closed 驗證。
+- CI 改為驗證完整 Cargo workspace，並禁止 Python 打包依賴重新進入 macOS、Windows 或 GitHub Release 流程。
 
 ## 0.2.2 - 2026-07-23
 

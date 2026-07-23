@@ -6,6 +6,10 @@ rust-version = "1.88"
 description = "Scrape Bahamut rankings with Playwright, update Google Sheets, and send Gmail failure alerts"
 license = "MIT"
 
+[workspace]
+members = [".", "tools/release-packager"]
+resolver = "3"
+
 [dependencies]
 anyhow = "1"
 base64 = "0.22.1"

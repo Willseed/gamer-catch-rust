@@ -580,6 +580,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "gamercatch-release-packager"
+version = "0.2.2"
+dependencies = [
+ "anyhow",
+ "clap",
+ "regex",
+ "serde_json",
+ "tempfile",
+ "toml",
+ "unicode-normalization",
+ "zip",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
